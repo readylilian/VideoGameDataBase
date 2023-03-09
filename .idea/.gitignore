@@ -1,0 +1,6 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+
+#ignore username and password data
+PostgressSSH.java

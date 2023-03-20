@@ -13,18 +13,7 @@ public class Application {
         this.conn = conn;
     }
 
-    public void init(){
 
-        //login first
-        this.currentUser = login();
-
-        boolean quit = true;
-        while(quit){
-            String nextCmd = scanner.nextLine();
-            quit = commandParser(nextCmd);
-
-        }
-    }
 
     private String login(){
         while(true){
@@ -51,6 +40,19 @@ public class Application {
             }
         }
 
+    }
+
+    public void init(){
+        //login first
+        this.currentUser = login();
+
+        //Start processing commands
+        boolean quit = true;
+        while(quit){
+            String nextCmd = scanner.nextLine();
+            quit = commandParser(nextCmd);
+
+        }
     }
 
     private boolean commandParser(String cmd){

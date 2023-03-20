@@ -1,8 +1,6 @@
 import com.jcraft.jsch.*;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.Properties;
 
 public class PostgresSSH {
@@ -47,6 +45,14 @@ public class PostgresSSH {
             // Do something with the database....
             // Call main method here of application class or something
             Application application = new Application();
+            Statement st = conn.createStatement();
+            ResultSet res = st.executeQuery("select * from \"Test\"");
+            while(res.next()){
+                for(int i = 1; i <= res.getMetaData().getColumnCount(); i++){
+                    System.out.print(res.getString(i) + " ");
+                }
+                System.out.println("");
+            }
             application.init();
 
         } catch (Exception e) {

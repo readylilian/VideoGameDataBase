@@ -71,6 +71,22 @@ public class Application {
                 addFriend(cmdArgs.get(1));
             }
         }
+        if(cmd.equals("remove_friend")){
+            if(cmdArgs.size() != 2){
+                System.out.println("Usage: remove_friend <username of friend you would like to remove>");
+            }
+            else{
+                removeFriend(cmdArgs.get(1));
+            }
+        }
+        if(cmd.equals("search_friends")){
+            if(cmdArgs.size() != 2){
+                System.out.println("Usage: search_friends <email to search>");
+            }
+            else{
+                searchFriends(cmdArgs.get(1));
+            }
+        }
         return true;
     }
 
@@ -84,14 +100,49 @@ public class Application {
                     "or another error occurred. Please see error output for more detail");
             System.err.println(e.getMessage());
         }
-
     }
 
-    int getResultSetRowCount(ResultSet res) throws SQLException {
+    private void removeFriend(String username){
+        try{
+            Statement st = this.conn.createStatement();
+            st.executeUpdate("delete from friends_with where UID like " + this.currentUser +
+                    " and FID like " + username);
+        }
+        catch (SQLException e){
+            System.out.println("We are sorry, something went wrong. Either you aren not friends with that user, " +
+                    "or another error occurred. Please see error output for more detail");
+            System.err.println(e.getMessage());
+        }
+    }
+
+    private void searchFriends(String email){
+        try{
+            Statement st = this.conn.createStatement();
+            ResultSet res = st.executeQuery("select username from user where email like %" + email + "%");
+            System.out.println("Users with emails that match your search:");
+            printResultSet(res);
+        }
+        catch (SQLException e){
+            System.out.println("We are sorry, something went wrong. Either you aren not friends with that user, " +
+                    "or another error occurred. Please see error output for more detail");
+            System.err.println(e.getMessage());
+        }
+    }
+
+    private int getResultSetRowCount(ResultSet res) throws SQLException {
         int size = 0;
         while (res.next()) {
             size++;
         }
         return size;
+    }
+
+    private void printResultSet(ResultSet res) throws SQLException{
+        while(res.next()){
+            for(int i = 1; i <= res.getMetaData().getColumnCount(); i++){
+                System.out.print(res.getString(i) + " ");
+            }
+            System.out.println();
+        }
     }
 }

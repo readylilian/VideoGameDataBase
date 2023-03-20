@@ -45,14 +45,16 @@ public class PostgresSSH {
             // Do something with the database....
             // Call main method here of application class or something
             Application application = new Application(conn);
-            Statement st = conn.createStatement();
-            ResultSet res = st.executeQuery("select * from \"Test\"");
-            while(res.next()){
-                for(int i = 1; i <= res.getMetaData().getColumnCount(); i++){
-                    System.out.print(res.getString(i) + " ");
-                }
-                System.out.println();
-            }
+            //The below commented out statements are an example of how to access a table with mixed case, and how to
+            //display each row returned by a query.
+//            Statement st = conn.createStatement();
+//            ResultSet res = st.executeQuery("select * from \"Test\"");
+//            while(res.next()){
+//                for(int i = 1; i <= res.getMetaData().getColumnCount(); i++){
+//                    System.out.print(res.getString(i) + " ");
+//                }
+//                System.out.println();
+//            }
             application.init();
 
         } catch (Exception e) {

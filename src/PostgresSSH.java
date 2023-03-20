@@ -46,6 +46,8 @@ public class PostgresSSH {
 
             // Do something with the database....
             // Call main method here of application class or something
+            Application application = new Application();
+            application.init();
 
         } catch (Exception e) {
             e.printStackTrace();

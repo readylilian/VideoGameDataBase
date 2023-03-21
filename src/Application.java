@@ -3,6 +3,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
 import java.sql.*;
+import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
 
 public class Application {
     private final Connection conn;
@@ -17,23 +19,44 @@ public class Application {
 
     private String login(){
         while(true){
-            System.out.println("Please enter your username and password separated by a space");
-            ArrayList<String> loginInfo = new ArrayList<>(List.of(scanner.nextLine().trim().split(" ")));
-            if(loginInfo.size() != 2){
-                System.out.println("Sorry, please try again");
-            }
             try{
-                Statement st = conn.createStatement();
-                ResultSet res = st.executeQuery("select * from user where username like "
-                        + loginInfo.get(0) + " and password like " + loginInfo.get(1));
-                int rowCount = getResultSetRowCount(res);
-                res.first();
-                if(rowCount == 1){
-                    return res.getString(1);
-                } else{
-                    System.out.println("Sorry, we couldn't find a user with " +
-                            "that username and password. Please try again");
+                System.out.println("Please enter your username and password separated by a space\n" +
+                        "OR create an account by entering \"create\"");
+                ArrayList<String> loginInfo = new ArrayList<>(List.of(scanner.nextLine().trim().split(" ")));
+                if(loginInfo.size() != 2){
+                    if(loginInfo.size() == 1){
+                        if(loginInfo.get(0).equals("create")){
+                            return createAccount();
+                        }
+                        else{
+                            System.out.println("Sorry, please try again");
+                        }
+                    }
+                    else {
+                        System.out.println("Sorry, please try again");
+                    }
                 }
+                else{
+                    //st must be scrollable to use getRows and still reset to the beginning
+                    //st must be updatable if you must use it to update a table
+                    Statement st = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+                    ResultSet res = st.executeQuery("select * from \"user\" where \"username\" like "
+                            + "'" + loginInfo.get(0) + "'" + " and \"password\" like " + "'" + loginInfo.get(1) + "'");
+                    int rowCount = getResultSetRowCount(res);
+                    res.first(); //reset the result iterator to the first row
+                    if(rowCount == 1){
+                        String username = res.getString(1);
+                        st.executeUpdate("update \"user\" set \"last_access_date\" = '" + getCurrentDateTime() + "' where " +
+                                "\"username\" like '" + username + "'");
+                        st.close();
+                        return username;
+                    } else{
+                        System.out.println("Sorry, we couldn't find a user with " +
+                                "that username and password. Please try again");
+                    }
+                    st.close();
+                }
+
             }
             catch (SQLException e){
                 System.err.println(e.getMessage());
@@ -42,9 +65,31 @@ public class Application {
 
     }
 
+    private String createAccount(){
+        while(true) {
+            System.out.println("Please enter a username, password,  email, first name, and last name separated by spaces");
+            ArrayList<String> accountInfo = new ArrayList<>(List.of(scanner.nextLine().trim().split(" ")));
+            if (accountInfo.size() != 5) {
+                System.out.println("Sorry, please try again");
+            } else {
+                try (Statement st = conn.createStatement()) {
+                    st.executeUpdate("insert into \"user\" values('" + accountInfo.get(0) + "', '" + accountInfo.get(1) + "', '"
+                            + accountInfo.get(2) + "', '" + getCurrentDateTime() + "', '" + getCurrentDateTime() + "', '" +
+                            accountInfo.get(3) + "', '" + accountInfo.get(4) + "')");
+                    return accountInfo.get(0);
+                } catch (SQLException e) {
+                    System.out.println("We are sorry, something went wrong. Either that user is already in use, " +
+                            "or another error occurred. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
+            }
+        }
+    }
+
     public void init(){
         //login first
         this.currentUser = login();
+        System.out.println("Welcome to Polybius");
 
         //Start processing commands
         boolean quit = true;
@@ -61,6 +106,7 @@ public class Application {
         ArrayList<String> cmdArgs = new ArrayList<>(List.of(cmd.split(" ")));
         cmd = cmdArgs.get(0);
         if(cmd.equals("q") || cmd.equals("quit")){
+            System.out.println("Hope you enjoyed!");
             return false;
         }
         if(cmd.equals("add_friend")){
@@ -147,5 +193,11 @@ public class Application {
             }
             System.out.println();
         }
+    }
+
+    private String getCurrentDateTime(){
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss");
+        LocalDateTime now = LocalDateTime.now();
+        return dtf.format(now);
     }
 }

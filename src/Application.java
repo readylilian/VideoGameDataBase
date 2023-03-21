@@ -19,35 +19,38 @@ public class Application {
 
     private String login(){
         while(true){
-            System.out.println("Please enter your username and password separated by a space\n" +
-                    "OR create an account by entering \"create\"");
-            ArrayList<String> loginInfo = new ArrayList<>(List.of(scanner.nextLine().trim().split(" ")));
-            if(loginInfo.size() != 2){
-                if(loginInfo.size() == 1){
-                    if(loginInfo.get(0).equals("create")){
-                        createAccount();
-                    }
-                    else{
-                        System.out.println("Sorry, please try again");
-                    }
-                }
-                System.out.println("Sorry, please try again");
-            }
             try{
-                Statement st = conn.createStatement();
-                ResultSet res = st.executeQuery("select * from user where username like "
-                        + loginInfo.get(0) + " and password like " + loginInfo.get(1));
-                int rowCount = getResultSetRowCount(res);
-                res.first(); //reset the result iterator to the first row
-                if(rowCount == 1){
-                    st.executeUpdate("update user set \"lastAccessDate\" = " + getCurrentDateTime() + " where " +
-                            "username like " + res.getString(1));
-                    return res.getString(1);
-                } else{
-                    System.out.println("Sorry, we couldn't find a user with " +
-                            "that username and password. Please try again");
+                System.out.println("Please enter your username and password separated by a space\n" +
+                        "OR create an account by entering \"create\"");
+                ArrayList<String> loginInfo = new ArrayList<>(List.of(scanner.nextLine().trim().split(" ")));
+                if(loginInfo.size() != 2){
+                    if(loginInfo.size() == 1){
+                        if(loginInfo.get(0).equals("create")){
+                            createAccount();
+                        }
+                        else{
+                            System.out.println("Sorry, please try again");
+                        }
+                    }
+                    System.out.println("Sorry, please try again");
                 }
-                st.close();
+                else{
+                    Statement st = conn.createStatement();
+                    ResultSet res = st.executeQuery("select * from user where username like "
+                            + loginInfo.get(0) + " and password like " + loginInfo.get(1));
+                    int rowCount = getResultSetRowCount(res);
+                    res.first(); //reset the result iterator to the first row
+                    if(rowCount == 1){
+                        st.executeUpdate("update user set \"lastAccessDate\" = " + getCurrentDateTime() + " where " +
+                                "username like " + res.getString(1));
+                        return res.getString(1);
+                    } else{
+                        System.out.println("Sorry, we couldn't find a user with " +
+                                "that username and password. Please try again");
+                    }
+                    st.close();
+                }
+
             }
             catch (SQLException e){
                 System.err.println(e.getMessage());

@@ -94,6 +94,7 @@ public class Application {
         try{
             Statement st = this.conn.createStatement();
             st.executeUpdate("insert into friends_with values (" + this.currentUser + ", "+username+")");
+            st.close();
         }
         catch (SQLException e){
             System.out.println("We are sorry, something went wrong. Either that user does not exist, " +
@@ -107,6 +108,7 @@ public class Application {
             Statement st = this.conn.createStatement();
             st.executeUpdate("delete from friends_with where UID like " + this.currentUser +
                     " and FID like " + username);
+            st.close();
         }
         catch (SQLException e){
             System.out.println("We are sorry, something went wrong. Either you aren not friends with that user, " +
@@ -121,6 +123,7 @@ public class Application {
             ResultSet res = st.executeQuery("select username from user where email like %" + email + "%");
             System.out.println("Users with emails that match your search:");
             printResultSet(res);
+            st.close();
         }
         catch (SQLException e){
             System.out.println("We are sorry, something went wrong. Either you aren not friends with that user, " +

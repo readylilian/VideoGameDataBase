@@ -19,32 +19,67 @@ public class Application {
 
     private String login(){
         while(true){
-            System.out.println("Please enter your username and password separated by a space");
-            ArrayList<String> loginInfo = new ArrayList<>(List.of(scanner.nextLine().trim().split(" ")));
-            if(loginInfo.size() != 2){
-                System.out.println("Sorry, please try again");
-            }
             try{
-                Statement st = conn.createStatement();
-                ResultSet res = st.executeQuery("select * from user where username like "
-                        + loginInfo.get(0) + " and password like " + loginInfo.get(1));
-                int rowCount = getResultSetRowCount(res);
-                res.first(); //reset the result iterator to the first row
-                if(rowCount == 1){
-                    st.executeUpdate("update user set \"lastAccessDate\" = " + getCurrentDateTime() + " where " +
-                            "username like " + res.getString(1));
-                    return res.getString(1);
-                } else{
-                    System.out.println("Sorry, we couldn't find a user with " +
-                            "that username and password. Please try again");
+                System.out.println("Please enter your username and password separated by a space\n" +
+                        "OR create an account by entering \"create\"");
+                ArrayList<String> loginInfo = new ArrayList<>(List.of(scanner.nextLine().trim().split(" ")));
+                if(loginInfo.size() != 2){
+                    if(loginInfo.size() == 1){
+                        if(loginInfo.get(0).equals("create")){
+                            return createAccount();
+                        }
+                        else{
+                            System.out.println("Sorry, please try again");
+                        }
+                    }
+                    else {
+                        System.out.println("Sorry, please try again");
+                    }
                 }
-                st.close();
+                else{
+                    Statement st = conn.createStatement();
+                    ResultSet res = st.executeQuery("select * from user where username like "
+                            + loginInfo.get(0) + " and password like " + loginInfo.get(1));
+                    int rowCount = getResultSetRowCount(res);
+                    res.first(); //reset the result iterator to the first row
+                    if(rowCount == 1){
+                        st.executeUpdate("update user set \"lastAccessDate\" = " + getCurrentDateTime() + " where " +
+                                "username like " + res.getString(1));
+                        return res.getString(1);
+                    } else{
+                        System.out.println("Sorry, we couldn't find a user with " +
+                                "that username and password. Please try again");
+                    }
+                    st.close();
+                }
+
             }
             catch (SQLException e){
                 System.err.println(e.getMessage());
             }
         }
 
+    }
+
+    private String createAccount(){
+        while(true) {
+            System.out.println("Please enter a username, password,  email, first name, and last name separated by spaces");
+            ArrayList<String> accountInfo = new ArrayList<>(List.of(scanner.nextLine().trim().split(" ")));
+            if (accountInfo.size() != 5) {
+                System.out.println("Sorry, please try again");
+            } else {
+                try (Statement st = conn.createStatement()) {
+                    st.executeUpdate("insert into user values(" + accountInfo.get(0) + " " + accountInfo.get(1) + " "
+                            + accountInfo.get(2) + " " + getCurrentDateTime() + " " + getCurrentDateTime() + " " +
+                            accountInfo.get(3) + " " + accountInfo.get(4));
+                    return accountInfo.get(0);
+                } catch (SQLException e) {
+                    System.out.println("We are sorry, something went wrong. Either that user is already in use, " +
+                            "or another error occurred. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
+            }
+        }
     }
 
     public void init(){

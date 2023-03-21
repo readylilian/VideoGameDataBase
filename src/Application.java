@@ -166,7 +166,7 @@ public class Application {
             st.close();
         }
         catch (SQLException e){
-            System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+            System.out.println("We are sorry, something went wrong. Video game may not exist. Please see error output for more detail");
             System.err.println(e.getMessage());
             vg_id = 0; //returns zero on error
         }

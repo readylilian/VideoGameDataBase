@@ -87,6 +87,14 @@ public class Application {
                 searchFriends(cmdArgs.get(1));
             }
         }
+        if(cmd.equals("rate_game")){
+            if(cmdArgs.size() != 3){
+                System.out.println("Usage: rate_game <video game> <star rating: 1-5>");
+            } else {
+                int rating = Integer.parseInt(cmdArgs.get(2));
+                rate_game(cmdArgs.get(1), rating);
+            }
+        }
         return true;
     }
 
@@ -146,6 +154,23 @@ public class Application {
                 System.out.print(res.getString(i) + " ");
             }
             System.out.println();
+        }
+    }
+
+    private void rate_game(String game, int rating){
+        if(!(rating <= 5 && rating >= 1)){
+            System.out.println("Please enter a valid rating number 1-5.");
+        } else {
+            try {
+                Statement st = this.conn.createStatement();
+                st.executeUpdate("update rates set rating = " + rating + "where username = "
+                    + this.currentUser + " and where title = " + game);
+                st.close();
+            } catch (SQLException e) {
+                System.out.println("We are sorry, something went wrong. You may not have that video game " +
+                        "or something else went wrong. Please see error output for more detail");
+                System.err.println(e.getMessage());
+            }
         }
     }
 }

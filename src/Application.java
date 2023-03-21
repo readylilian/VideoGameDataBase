@@ -1,3 +1,4 @@
+import javax.xml.transform.Result;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -129,6 +130,17 @@ public class Application {
             System.out.println("We are sorry, something went wrong. Either you aren not friends with that user, " +
                     "or another error occurred. Please see error output for more detail");
             System.err.println(e.getMessage());
+        }
+    }
+
+    private void createCollection(String name) {
+        try (Statement st = this.conn.createStatement()) {
+            ResultSet res = st.executeQuery("select collection_id from collection order by collection_id desc limit 1;");
+            int id = res.getInt("collection_id");
+            st.executeUpdate("insert into collection (collection_id, username, name) VALUES (" + id + ", " + this.currentUser +", " + name +")");
+        }
+        catch (SQLException e) {
+
         }
     }
 

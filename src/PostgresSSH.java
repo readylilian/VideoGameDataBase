@@ -1,5 +1,8 @@
 import com.jcraft.jsch.*;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.sql.*;
 import java.util.Properties;
 
@@ -10,9 +13,31 @@ public class PostgresSSH {
         int lport = 5432;
         String rhost = "starbug.cs.rit.edu";
         int rport = 5432;
-        String user = ""; //change to your username
-        String password = ""; //change to your password
+        String user = null; //change to your username
+        String password = null; //change to your password
         String databaseName = "p320_33"; //change to your database name
+        String fileName = "src/SSHLogin";
+
+        try (BufferedReader br = new BufferedReader(new FileReader(fileName))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] tokens = line.split(" ");
+                if (tokens.length == 2) {
+                    user = tokens[0];
+                    password = tokens[1];
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        if (user != null && password != null) {
+            System.out.println("Username: " + user);
+            System.out.println("Password: " + password);
+        } else {
+            System.out.println("Username and/or password not found in file");
+        }
 
         String driverName = "org.postgresql.Driver";
         Connection conn = null;

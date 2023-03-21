@@ -89,7 +89,7 @@ public class Application {
         }
         if(cmd.equals("rate_game")){
             if(cmdArgs.size() != 3){
-                System.out.println("Usage: rate_game <video game> <star rating: 1-5>");
+                System.out.println("Usage: rate_game <video game title> <star rating: 1-5>");
             } else {
                 int rating = Integer.parseInt(cmdArgs.get(2));
                 rate_game(cmdArgs.get(1), rating);
@@ -157,19 +157,43 @@ public class Application {
         }
     }
 
+    private int getIdFromTitle(String title){
+        int vg_id;
+        try{
+            Statement st = this.conn.createStatement();
+            ResultSet res = st.executeQuery("select vg_id from video_games where title like %" + title + "%");
+            vg_id = res.getInt("vg_id");
+            st.close();
+        }
+        catch (SQLException e){
+            System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+            System.err.println(e.getMessage());
+            vg_id = 0; //returns zero on error
+        }
+
+        return vg_id;
+    }
+
     private void rate_game(String game, int rating){
         if(!(rating <= 5 && rating >= 1)){
             System.out.println("Please enter a valid rating number 1-5.");
         } else {
-            try {
-                Statement st = this.conn.createStatement();
-                st.executeUpdate("update rates set rating = " + rating + "where username = "
-                    + this.currentUser + " and where title = " + game);
-                st.close();
-            } catch (SQLException e) {
-                System.out.println("We are sorry, something went wrong. You may not have that video game " +
-                        "or something else went wrong. Please see error output for more detail");
-                System.err.println(e.getMessage());
+            int vg_id = getIdFromTitle(game);
+            if(vg_id == 0){
+                System.out.println("Video game may not exist.");
+            } else {
+                try {
+                    Statement st2 = this.conn.createStatement();
+                    st2.executeUpdate("if exists(select rating from rates where vg_id = " + vg_id + ")"
+                            + "update rates set rating = " + rating + "where username = " + this.currentUser
+                            + " and vg_id = " + vg_id
+                            + "else insert into rates values (" + this.currentUser + "," + vg_id + "," + rating + ")"
+                    );
+                    st2.close();
+                } catch (SQLException e) {
+                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
             }
         }
     }

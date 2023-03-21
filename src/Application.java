@@ -56,7 +56,7 @@ public class Application {
     }
 
     private boolean commandParser(String cmd){
-        cmd = cmd.toLowerCase(Locale.ROOT);
+//        cmd = cmd.toLowerCase(Locale.ROOT);
         cmd = cmd.trim();
         ArrayList<String> cmdArgs = new ArrayList<>(List.of(cmd.split(" ")));
         cmd = cmdArgs.get(0);

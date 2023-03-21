@@ -24,9 +24,9 @@ public class Application {
                 System.out.println("Sorry, please try again");
             }
             try{
-                Statement st = conn.createStatement();
-                ResultSet res = st.executeQuery("select * from user where username like "
-                        + loginInfo.get(0) + " and password like " + loginInfo.get(1));
+                Statement st = conn.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_READ_ONLY);
+                ResultSet res = st.executeQuery("select * from \"user\" where \"username\" like "
+                        + "'" + loginInfo.get(0) + "'" + " and \"password\" like " + "'" + loginInfo.get(1) + "'");
                 int rowCount = getResultSetRowCount(res);
                 res.first();
                 if(rowCount == 1){
@@ -88,6 +88,15 @@ public class Application {
                 searchFriends(cmdArgs.get(1));
             }
         }
+        if(cmd.equals("create_collection")){
+            if(cmdArgs.size() != 2){
+                System.out.println("Usage: create_collection <name of collection>");
+            }
+            else{
+                createCollection(cmdArgs.get(1));
+            }
+
+        }
         return true;
     }
 
@@ -134,12 +143,34 @@ public class Application {
     }
 
     private void createCollection(String name) {
-        try (Statement st = this.conn.createStatement()) {
-            ResultSet res = st.executeQuery("select collection_id from collection order by collection_id desc limit 1;");
-            int id = res.getInt("collection_id");
-            st.executeUpdate("insert into collection (collection_id, username, name) VALUES (" + id + ", " + this.currentUser +", " + name +")");
+        try{
+            //check for duplicate collection
+            PreparedStatement pst = conn.prepareStatement("select * from collection where username = ? and name = ?");
+            pst.setString(1, this.currentUser);
+            pst.setString(2, name);
+            ResultSet res = pst.executeQuery();
+            if(!res.next()) {
+                // calculate next collection id
+                Statement st = this.conn.createStatement();
+                res = st.executeQuery("select collection_id from collection order by collection_id desc limit 1;");
+                if (res.next()) {
+                    int id = 1 + res.getInt("collection_id");
+                    // insert the new collection
+                    String query = "insert into collection (collection_id, username, name) VALUES (?, ?, ?)";
+                    PreparedStatement statement = conn.prepareStatement(query);
+                    statement.setInt(1, id);
+                    statement.setString(2, this.currentUser);
+                    statement.setString(3, name);
+                    statement.executeUpdate();
+                    System.out.println("New Collection " + name + " created!");
+                }
+            } else {
+                System.err.println("Collection with the name " + name + " already exists.");
+            }
         }
         catch (SQLException e) {
+            System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+            System.err.println(e.getMessage());
 
         }
     }

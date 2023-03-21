@@ -3,6 +3,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
 import java.sql.*;
+import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
 
 public class Application {
     private final Connection conn;
@@ -27,13 +29,16 @@ public class Application {
                 ResultSet res = st.executeQuery("select * from user where username like "
                         + loginInfo.get(0) + " and password like " + loginInfo.get(1));
                 int rowCount = getResultSetRowCount(res);
-                res.first();
+                res.first(); //reset the result iterator to the first row
                 if(rowCount == 1){
+                    st.executeUpdate("update user set \"lastAccessDate\" = " + getCurrentDateTime() + " where " +
+                            "username like " + res.getString(1));
                     return res.getString(1);
                 } else{
                     System.out.println("Sorry, we couldn't find a user with " +
                             "that username and password. Please try again");
                 }
+                st.close();
             }
             catch (SQLException e){
                 System.err.println(e.getMessage());
@@ -144,5 +149,11 @@ public class Application {
             }
             System.out.println();
         }
+    }
+
+    private String getCurrentDateTime(){
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd hh:mm:ss");
+        LocalDateTime now = LocalDateTime.now();
+        return dtf.format(now);
     }
 }

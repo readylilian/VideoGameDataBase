@@ -26,13 +26,15 @@ public class Application {
                 if(loginInfo.size() != 2){
                     if(loginInfo.size() == 1){
                         if(loginInfo.get(0).equals("create")){
-                            createAccount();
+                            return createAccount();
                         }
                         else{
                             System.out.println("Sorry, please try again");
                         }
                     }
-                    System.out.println("Sorry, please try again");
+                    else {
+                        System.out.println("Sorry, please try again");
+                    }
                 }
                 else{
                     Statement st = conn.createStatement();
@@ -59,8 +61,25 @@ public class Application {
 
     }
 
-    private void createAccount(){
-        //stubbed
+    private String createAccount(){
+        while(true) {
+            System.out.println("Please enter a username, password,  email, first name, and last name separated by spaces");
+            ArrayList<String> accountInfo = new ArrayList<>(List.of(scanner.nextLine().trim().split(" ")));
+            if (accountInfo.size() != 5) {
+                System.out.println("Sorry, please try again");
+            } else {
+                try (Statement st = conn.createStatement()) {
+                    st.executeUpdate("insert into user values(" + accountInfo.get(0) + " " + accountInfo.get(1) + " "
+                            + accountInfo.get(2) + " " + getCurrentDateTime() + " " + getCurrentDateTime() + " " +
+                            accountInfo.get(3) + " " + accountInfo.get(4));
+                    return accountInfo.get(0);
+                } catch (SQLException e) {
+                    System.out.println("We are sorry, something went wrong. Either that user is already in use, " +
+                            "or another error occurred. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
+            }
+        }
     }
 
     public void init(){

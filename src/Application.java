@@ -19,9 +19,18 @@ public class Application {
 
     private String login(){
         while(true){
-            System.out.println("Please enter your username and password separated by a space");
+            System.out.println("Please enter your username and password separated by a space\n" +
+                    "OR create an account by entering \"create\"");
             ArrayList<String> loginInfo = new ArrayList<>(List.of(scanner.nextLine().trim().split(" ")));
             if(loginInfo.size() != 2){
+                if(loginInfo.size() == 1){
+                    if(loginInfo.get(0).equals("create")){
+                        createAccount();
+                    }
+                    else{
+                        System.out.println("Sorry, please try again");
+                    }
+                }
                 System.out.println("Sorry, please try again");
             }
             try{
@@ -45,6 +54,10 @@ public class Application {
             }
         }
 
+    }
+
+    private void createAccount(){
+        //stubbed
     }
 
     public void init(){

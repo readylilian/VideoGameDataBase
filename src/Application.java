@@ -272,60 +272,9 @@ public class Application {
     }
 
     private void addToCollection(List<String> args){
-//        StringBuilder gameName = new StringBuilder();
-//        //build game name
-//        for(int i = 0; i < args.size(); i++){
-//            String currentWord = args.get(i);
-////            System.out.println(currentWord);
-//            if(currentWord.contains("[") && currentWord.contains("]")){
-//                gameName.append(currentWord.replace("[", "").replace("]", ""));
-//                int end = args.size();
-//                args = args.subList(i+1, end);
-////                System.out.println(args);
-//                break;
-//            } else if(currentWord.contains("[")) {
-//                gameName.append(currentWord.replace("[", ""));
-//            }else if(currentWord.contains("]")) {
-//                gameName.append(currentWord.replace("]", ""));
-//                int end = args.size();
-//                args = args.subList(i, end);
-//                System.out.println(args);
-//                break;
-//            } else{
-//                gameName.append(currentWord);
-//            }
-//
-//            if(i < args.size()-1){
-//                gameName.append(" ");
-//            }
-//        }
-//        //build collection name
-//        StringBuilder collectionName = new StringBuilder();
-//        for(int i = 0; i < args.size(); i++){
-//            String currentWord = args.get(i);
-////            System.out.println(currentWord);
-//            if(currentWord.contains("[") && currentWord.contains("]")){
-//                collectionName.append(currentWord.replace("[", "").replace("]", ""));
-//                break;
-//            } else if(args.get(i).contains("[")) {
-//                collectionName.append(currentWord.replace("[", ""));
-//            } else if(currentWord.contains("]")){
-//                collectionName.append(currentWord.replace("]", ""));
-//                break;
-//            } else{
-//                collectionName.append(currentWord);
-//            }
-//            if(i < args.size()-1){
-//                gameName.append(" ");
-//            }
-//        }
-
-//        System.out.println(gameName);
-//        System.out.println(collectionName);
         String[] names = parseAddToCollection(args);
         String gameName = names[0];
         String collectionName = names[1];
-        //add game to collection
         try{
             PreparedStatement queryCollectionExists = conn.prepareStatement("select collection_id from collection " +
                     "where username like ? and name like ?");
@@ -341,71 +290,79 @@ public class Application {
                 if(res.next()){ //check if game exists
                     int vg_id = res.getInt("vg_id");
                     //if we get here, game and collection exist
-                    PreparedStatement addToCollection = conn.prepareStatement("insert into collection_contains " +
-                            "values (?, ?)");
-                    addToCollection.setInt(1, collection_id);
-                    addToCollection.setInt(2, vg_id);
-                    addToCollection.executeUpdate();
+                    //must check if game is already in collection
+                    PreparedStatement checkDuplicate = conn.prepareStatement("(select * from collection_contains" +
+                            " where collection_id = ? and vg_id = ?)");
+                    checkDuplicate.setInt(1, collection_id);
+                    checkDuplicate.setInt(2, vg_id);
+                    ResultSet exists = checkDuplicate.executeQuery();
+                    if(!exists.next()){
+                        //Now we need to check if that game is on a system they own or not, and warn them if not
+                        PreparedStatement onOwnedSystem = conn.prepareStatement("select * from " +
+                                "\"video_game_on/has_platform\" as vp join \"user_has/owns_platform\" as up " +
+                                "on vp.platform_id = up.platform_id where " +
+                                "vp.vg_id = ? and up.username like ?");
+                        onOwnedSystem.setInt(1, vg_id);
+                        onOwnedSystem.setString(2, currentUser);
+                        ResultSet systemOwned = onOwnedSystem.executeQuery();
+                        if(systemOwned.next()){
+                            PreparedStatement addToCollection = conn.prepareStatement("insert into " +
+                                    "collection_contains values (?, ?)");
+                            addToCollection.setInt(1, collection_id);
+                            addToCollection.setInt(2, vg_id);
+                            addToCollection.executeUpdate();
+                            System.out.println("Success, added " + gameName + " to " + collectionName);
+                        } else {
+                            while(true){
+                                System.out.println("WARNING: you do not own any systems that this game can run on." +
+                                        "\n Would you still like to add it? (y/n)");
+                                String response = scanner.nextLine();
+                                if(response.toLowerCase(Locale.ROOT).charAt(0) == 'y'){
+                                    PreparedStatement addToCollection = conn.prepareStatement("insert into collection_contains " +
+                                            "values (?, ?)");
+                                    addToCollection.setInt(1, collection_id);
+                                    addToCollection.setInt(2, vg_id);
+                                    addToCollection.executeUpdate();
+                                    System.out.println("Success, added " + gameName + " to " + collectionName);
+                                    break;
+                                } else if(response.toLowerCase(Locale.ROOT).charAt(0) == 'n'){
+                                    System.out.println("Ok, we won't add it!");
+                                    break;
+                                }
+                            }
+                        }
+                    } else{
+                        System.out.println("Sorry, that game is already in that collection");
+                    }
+
+                } else{
+                    System.out.println("Sorry, that game does not exist");
                 }
                 queryGameExists.close();
+            } else{
+                System.out.println("Sorry, that collection does not exist");
             }
             queryCollectionExists.close();
         } catch (SQLException e){
             System.out.println("We are sorry, something went wrong. Either that game or collection does not exist, or" +
-                    "an internal error occurred. Please see error output for more detail");
+                    " an internal error occurred. Please see error output for more detail");
             System.err.println(e.getMessage());
         }
     }
 
     private String[] parseAddToCollection(List<String> args){
-        StringBuilder gameName = new StringBuilder();
-        //build game name
+        StringBuilder both = new StringBuilder();
         for(int i = 0; i < args.size(); i++){
-            String currentWord = args.get(i);
-//            System.out.println(currentWord);
-            if(currentWord.contains("[") && currentWord.contains("]")){
-                gameName.append(currentWord.replace("[", "").replace("]", ""));
-                int end = args.size();
-                args = args.subList(i+1, end);
-//                System.out.println(args);
-                break;
-            } else if(currentWord.contains("[")) {
-                gameName.append(currentWord.replace("[", ""));
-            }else if(currentWord.contains("]")) {
-                gameName.append(currentWord.replace("]", ""));
-                int end = args.size();
-                args = args.subList(i, end);
-                System.out.println(args);
-                break;
-            } else{
-                gameName.append(currentWord);
+            both.append(args.get(i));
+            if(i != args.size()-1){
+                both.append(" ");
             }
+        }
+        String[] split = both.toString().split("] \\[");
 
-            if(i < args.size()-1){
-                gameName.append(" ");
-            }
-        }
-        //build collection name
-        StringBuilder collectionName = new StringBuilder();
-        for(int i = 0; i < args.size(); i++){
-            String currentWord = args.get(i);
-//            System.out.println(currentWord);
-            if(currentWord.contains("[") && currentWord.contains("]")){
-                collectionName.append(currentWord.replace("[", "").replace("]", ""));
-                break;
-            } else if(args.get(i).contains("[")) {
-                collectionName.append(currentWord.replace("[", ""));
-            } else if(currentWord.contains("]")){
-                collectionName.append(currentWord.replace("]", ""));
-                break;
-            } else{
-                collectionName.append(currentWord);
-            }
-            if(i < args.size()-1){
-                gameName.append(" ");
-            }
-        }
-        return new String[]{String.valueOf(collectionName), String.valueOf(gameName)};
+        split[0] = split[0].substring(1);
+        split[1] = split[1].substring(0, split[1].length()-1);
+        return split;
     }
 
     private int getResultSetRowCount(ResultSet res) throws SQLException {

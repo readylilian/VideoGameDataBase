@@ -135,11 +135,11 @@ public class Application {
             }
         }
         if(cmd.equals("create_collection")){
-            if(cmdArgs.size() != 2){
+            if(cmdArgs.size() < 2){
                 System.out.println("Usage: create_collection <name of collection>");
             }
             else{
-                createCollection(cmdArgs.get(1));
+                createCollection(cmdArgs.subList(1, cmdArgs.size()));
             }
 
         }
@@ -221,12 +221,19 @@ public class Application {
         }
     }
 
-    private void createCollection(String name) {
+    private void createCollection(List<String> nameList) {
         try{
             //check for duplicate collection
+            StringBuilder name = new StringBuilder();
+            for(int i = 0; i < nameList.size(); i++){
+                name.append(nameList.get(i));
+                if(i < nameList.size()-1){
+                    name.append(" ");
+                }
+            }
             PreparedStatement pst = conn.prepareStatement("select * from collection where username = ? and name = ?");
             pst.setString(1, this.currentUser);
-            pst.setString(2, name);
+            pst.setString(2, name.toString());
             ResultSet res = pst.executeQuery();
             if(!res.next()) {
                 // calculate next collection id
@@ -239,7 +246,7 @@ public class Application {
                     PreparedStatement statement = conn.prepareStatement(query);
                     statement.setInt(1, id);
                     statement.setString(2, this.currentUser);
-                    statement.setString(3, name);
+                    statement.setString(3, name.toString());
                     statement.executeUpdate();
                     System.out.println("New Collection " + name + " created!");
                 }

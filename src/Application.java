@@ -148,9 +148,24 @@ public class Application {
 
     private void addFriend(String username){
         try{
-            Statement st = this.conn.createStatement();
-            st.executeUpdate("insert into friends_with values (" + this.currentUser + ", "+username+")");
-            st.close();
+            String checkFriendQuery = "select * from friends_with where uid like ? and fid like ?";
+            String addFriendUpdate = "insert into friends_with values (?, ?)";
+            PreparedStatement checkFriend = conn.prepareStatement(checkFriendQuery);
+            checkFriend.setString(1, currentUser);
+            checkFriend.setString(2, username);
+            ResultSet res = checkFriend.executeQuery();
+            if(!res.next()){
+                PreparedStatement addFriend = conn.prepareStatement(addFriendUpdate);
+                addFriend.setString(1, currentUser);
+                addFriend.setString(2, username);
+                addFriend.executeUpdate();
+                System.out.println("Success! You are now friends with " + username);
+                addFriend.close();
+            }
+            else{
+                System.out.println("Sorry, you are already friends with that user");
+            }
+            checkFriend.close();
         }
         catch (SQLException e){
             System.out.println("We are sorry, something went wrong. Either that user does not exist, " +
@@ -161,10 +176,25 @@ public class Application {
 
     private void removeFriend(String username){
         try{
-            Statement st = this.conn.createStatement();
-            st.executeUpdate("delete from friends_with where UID like " + this.currentUser +
-                    " and FID like " + username);
-            st.close();
+            String checkFriendQuery = "select * from friends_with where uid like ? and fid like ?";
+            String removeFriendUpdate = "delete from friends_with where uid like ? and fid like ?";
+            PreparedStatement checkFriend = conn.prepareStatement(checkFriendQuery,
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+            checkFriend.setString(1, currentUser);
+            checkFriend.setString(2, username);
+            ResultSet res = checkFriend.executeQuery();
+            if(res.first()){
+                PreparedStatement removeFriend = conn.prepareStatement(removeFriendUpdate);
+                removeFriend.setString(1, currentUser);
+                removeFriend.setString(2, username);
+                removeFriend.executeUpdate();
+                System.out.println("Success! You are no longer friends with " + username);
+                removeFriend.close();
+            }
+            else{
+                System.out.println("Sorry, you aren't friends with that user");
+            }
+            checkFriend.close();
         }
         catch (SQLException e){
             System.out.println("We are sorry, something went wrong. Either you aren not friends with that user, " +
@@ -175,15 +205,18 @@ public class Application {
 
     private void searchFriends(String email){
         try{
-            Statement st = this.conn.createStatement();
-            ResultSet res = st.executeQuery("select username from user where email like %" + email + "%");
+            String formattedEmail = "%"+email+"%";
+//            PreparedStatement st = this.conn.prepareStatement("select \"username\" from \"user\" where \"email\" like '%'?'%'");
+            PreparedStatement st = this.conn.prepareStatement("select username from \"user\" where email like ?");
+            st.setString(1, formattedEmail);
+
+            ResultSet res = st.executeQuery();
             System.out.println("Users with emails that match your search:");
             printResultSet(res);
             st.close();
         }
         catch (SQLException e){
-            System.out.println("We are sorry, something went wrong. Either you aren not friends with that user, " +
-                    "or another error occurred. Please see error output for more detail");
+            System.out.println("We are sorry, something went wrong. Please see error output for more detail");
             System.err.println(e.getMessage());
         }
     }

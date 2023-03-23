@@ -144,15 +144,25 @@ public class Application {
 
         }
         if(cmd.equals("rate_game")){
-            if(cmdArgs.size() != 3){
-                System.out.println("Usage: rate_game <video game title> <star rating: 1-5>");
+            if(cmdArgs.size() < 3){
+                System.out.println("Usage: rate_game <star rating: 1-5> <video game title>");
             } else {
                 int rating;
                 try {
-                    rating = Integer.parseInt(cmdArgs.get(2));
-                    rate_game(cmdArgs.get(1), rating);
+                    rating = Integer.parseInt(cmdArgs.get(1));
+                    List<String> vg_name = cmdArgs.subList(2, cmdArgs.size());
+
+                    StringBuilder name = new StringBuilder();
+                    for(int i = 0; i < vg_name.size(); i++){
+                        name.append(vg_name.get(i));
+                        if(i < vg_name.size()-1){
+                            name.append(" ");
+                        }
+                    }
+                    rate_game(name.toString(), rating);
                 } catch (NumberFormatException nfe) {
-                    System.out.println("Please enter a number rating. Please see error output for more detail");
+                    System.out.println("Please enter a number rating. Usage: rate_game <star rating: 1-5> <video game title>." +
+                            " Please see error output for more detail");
                     System.err.println(nfe.getMessage());
                 }
             }
@@ -259,11 +269,15 @@ public class Application {
     }
 
     private int getIdFromTitle(String title){
-        int vg_id;
+        int vg_id = 0;
         try{
             Statement st = this.conn.createStatement();
-            ResultSet res = st.executeQuery("select vg_id from video_games where title like %" + title + "%");
-            vg_id = res.getInt("vg_id");
+            ResultSet res = st.executeQuery("select \"vg_id\" from \"video_game\" where \"title\" like '%" + title + "%'");
+            if(res.next()) {
+                vg_id = res.getInt("vg_id");
+            } else {
+                System.out.println("This game does not exist");
+            }
             st.close();
         }
         catch (SQLException e){
@@ -284,23 +298,24 @@ public class Application {
                 System.out.println("Video game may not exist.");
             } else {
                 try {
-                    PreparedStatement st2 = conn.prepareStatement("if exists(select rating from rates " +
-                            "where vg_id = ?) update rates set rating = ? where username = ? and vg_id = ?" +
-                            "else insert into rates values (?, ?, ?)");
-                    /**
-                    st2.executeUpdate("if exists(select rating from rates where vg_id = " + vg_id + ")"
-                            + "update rates set rating = " + rating + "where username = " + this.currentUser
-                            + " and vg_id = " + vg_id
-                            + "else insert into rates values (" + this.currentUser + "," + vg_id + "," + rating + ")"
-                    );
-                     */
+                    PreparedStatement st2 = conn.prepareStatement("select rating from rates where vg_id = ?");
                     st2.setInt(1, vg_id);
-                    st2.setInt(2, rating);
-                    st2.setString(3, this.currentUser);
-                    st2.setInt(4, vg_id);
-                    st2.setString(5, this.currentUser);
-                    st2.setInt(6, vg_id);
-                    st2.setInt(7, rating);
+                    ResultSet res = st2.executeQuery();
+                    if(res.next()){
+                        PreparedStatement st3 = conn.prepareStatement("update rates set rating = ?" +
+                                "where username = ? and vg_id = ?");
+                        st3.setInt(1, rating);
+                        st3.setString(2, this.currentUser);
+                        st3.setInt(3, vg_id);
+                        st3.executeUpdate();
+                    } else {
+                        PreparedStatement st4 = conn.prepareStatement("insert into rates values (?,?,?)");
+                        st4.setString(1, this.currentUser);
+                        st4.setInt(2, vg_id);
+                        st4.setInt(3, rating);
+                        st4.executeUpdate();
+                    }
+                    System.out.println("Game has been rated.");
                 } catch (SQLException e) {
                     System.out.println("We are sorry, something went wrong. Please see error output for more detail");
                     System.err.println(e.getMessage());

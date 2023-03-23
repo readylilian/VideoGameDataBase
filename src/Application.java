@@ -349,7 +349,15 @@ public class Application {
 
     private void listCollections() {
         try {
-            PreparedStatement pst = conn.prepareStatement("select * from collection where username like ?",
+            PreparedStatement pst = conn.prepareStatement(
+                        "SELECT c.name AS collection_name, COALESCE(COUNT(cc.vg_id), 0) AS number_of_video_games," +
+                                "CONCAT_WS(':', COALESCE(SUM(p.total_playtime) / 60, 0)," +
+                                    "SUM(p.total_playtime) % 60) AS total_play_time " +
+                            "FROM COLLECTION c " +
+                            "LEFT JOIN COLLECTION_CONTAINS cc ON c.collection_id = cc.collection_id " +
+                            "LEFT JOIN PLAYS p ON cc.vg_id = p.vg_id AND c.username = p.username " +
+                            "WHERE c.username like ? " +
+                            "GROUP BY c.collection_id, c.name;",
                     ResultSet.TYPE_SCROLL_SENSITIVE,
                     ResultSet.CONCUR_UPDATABLE);
             pst.setString(1, this.currentUser);
@@ -358,7 +366,6 @@ public class Application {
                 System.out.println("No collections found!");
             } else {
                 printResultSet(res);
-
             }
 
         } catch (SQLException e) {
@@ -588,21 +595,34 @@ public class Application {
     private void printResultSet(ResultSet res) throws SQLException{
         ResultSetMetaData rsmd = res.getMetaData();
         int columnsNumber = rsmd.getColumnCount();
-        System.out.printf("----------------------------------------------------------------------%n");
-        if (res.isBeforeFirst()) {
+        int colWidth = 30; // this can be changed if we need to accommodate larger strings
+        int tableWidth = (columnsNumber * colWidth) + (columnsNumber + 1) + (2 * columnsNumber);
+
+        for (int i = 0; i < tableWidth; i++) { // print lines
+            System.out.print("-");
+        }
+        System.out.println();
+        if (res.isBeforeFirst()) { // print column names
             for (int i = 1; i <= columnsNumber; i++) {
-                System.out.printf("| %-20s ", rsmd.getColumnName(i));
+                System.out.printf("| %-" + colWidth + "s ", rsmd.getColumnName(i));
             }
             System.out.println("|");
         }
-        System.out.printf("----------------------------------------------------------------------%n");
-        while (res.next()) {
+        for (int i = 0; i < tableWidth; i++) { // print lines
+            System.out.print("-");
+        }
+        System.out.println();
+
+        while (res.next()) { // print rows
             for (int i = 1; i <= columnsNumber; i++) {
-                System.out.printf("| %-20s ", res.getString(i));
+                System.out.printf("| %-" + colWidth + "s ", res.getString(i));
             }
             System.out.println("|");
         }
-        System.out.printf("----------------------------------------------------------------------%n");
+        for (int i = 0; i < tableWidth; i++) { // print lines
+            System.out.print("-");
+        }
+        System.out.println();
     }
 
     private String getCurrentDateTime(){

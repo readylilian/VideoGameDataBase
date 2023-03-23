@@ -269,7 +269,7 @@ public class Application {
                         }
                         //String formattedEmail = "%"+toSearch+"%";
                         PreparedStatement st = this.conn.prepareStatement(
-                                "select vg_id,title,esrb_rating from \"video_game\" where title like ?"
+                                "select vg_id,title,esrb_rating from \"video_game\" where title like *?*"
                         );
                         st.setString(1, search.toString());
 

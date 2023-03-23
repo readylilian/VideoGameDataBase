@@ -161,6 +161,14 @@ public class Application {
                 deleteFromCollection(cmdArgs.subList(1, cmdArgs.size()));
             }
         }
+        if(cmd.equals("modify_collection")){
+            if(cmdArgs.size() <= 2){
+                System.out.println("Usage: modify_collection [old colllection name] [new collection name]");
+            }
+            else{
+                modifyCollection(cmdArgs.subList(1, cmdArgs.size()));
+            }
+        }
         return true;
     }
 
@@ -406,6 +414,35 @@ public class Application {
             System.out.println("error");
             System.err.println(e.getMessage());
         }
+    }
+
+    private void modifyCollection(List<String> args){
+        String[] names = parseAddDeleteToCollection(args);
+        String oldName = names[0];
+        String newName = names[1];
+        try {
+            PreparedStatement queryCollectionExists = conn.prepareStatement("select collection_id from collection " +
+                    "where username like ? and name like ?");
+            queryCollectionExists.setString(1, currentUser);
+            queryCollectionExists.setString(2, oldName);
+            ResultSet res = queryCollectionExists.executeQuery();
+            if (res.next()) { //check if collection exists
+                PreparedStatement updateName = conn.prepareStatement("update collection set name = ? " +
+                        "where username = ?");
+                updateName.setString(1, newName);
+                updateName.setString(2, currentUser);
+                updateName.executeUpdate();
+                System.out.println("Successfully updated " + oldName + " to " + newName);
+                updateName.close();
+            } else{
+                System.out.println("Sorry, you have no such collection");
+            }
+            queryCollectionExists.close();
+        } catch (SQLException e){
+            System.out.println("Sorry, something went wrong");
+            System.err.println(e.getMessage());
+        }
+
     }
 
     private String[] parseAddDeleteToCollection(List<String> args){

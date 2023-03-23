@@ -143,7 +143,13 @@ public class Application {
             else{
                 createCollection(cmdArgs.subList(1, cmdArgs.size()));
             }
-
+        }
+        if(cmd.equals("list_collections")) {
+            if (cmdArgs.size() != 1) {
+                System.out.println("Usage: list_collections");
+            } else {
+                listCollections();
+            }
         }
         if(cmd.equals("add_to_collection")){
             if(cmdArgs.size() <= 2){
@@ -185,7 +191,6 @@ public class Application {
                 }
             }
         }
-
         return true;
     }
 
@@ -303,6 +308,27 @@ public class Application {
 
         }
     }
+
+    private void listCollections() {
+        try {
+            PreparedStatement pst = conn.prepareStatement("select * from collection where username like ?",
+                    ResultSet.TYPE_SCROLL_SENSITIVE,
+                    ResultSet.CONCUR_UPDATABLE);
+            pst.setString(1, this.currentUser);
+            ResultSet res = pst.executeQuery();
+            if (!res.isBeforeFirst()) {
+                System.out.println("No collections found!");
+            } else {
+                printResultSet(res);
+
+            }
+
+        } catch (SQLException e) {
+            System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+            System.err.println(e.getMessage());
+        }
+    }
+
 
     private void addToCollection(List<String> args){
         String[] names = parseAddDeleteToCollection(args);
@@ -457,12 +483,23 @@ public class Application {
     }
 
     private void printResultSet(ResultSet res) throws SQLException{
-        while(res.next()){
-            for(int i = 1; i <= res.getMetaData().getColumnCount(); i++){
-                System.out.print(res.getString(i) + " ");
+        ResultSetMetaData rsmd = res.getMetaData();
+        int columnsNumber = rsmd.getColumnCount();
+        System.out.printf("----------------------------------------------------------------------%n");
+        if (res.isBeforeFirst()) {
+            for (int i = 1; i <= columnsNumber; i++) {
+                System.out.printf("| %-20s ", rsmd.getColumnName(i));
             }
-            System.out.println();
+            System.out.println("|");
         }
+        System.out.printf("----------------------------------------------------------------------%n");
+        while (res.next()) {
+            for (int i = 1; i <= columnsNumber; i++) {
+                System.out.printf("| %-20s ", res.getString(i));
+            }
+            System.out.println("|");
+        }
+        System.out.printf("----------------------------------------------------------------------%n");
     }
 
     private String getCurrentDateTime(){

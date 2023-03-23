@@ -161,6 +161,31 @@ public class Application {
                 deleteFromCollection(cmdArgs.subList(1, cmdArgs.size()));
             }
         }
+        if(cmd.equals("rate_game")){
+            if(cmdArgs.size() < 3){
+                System.out.println("Usage: rate_game <star rating: 1-5> <video game title>");
+            } else {
+                int rating;
+                try {
+                    rating = Integer.parseInt(cmdArgs.get(1));
+                    List<String> vg_name = cmdArgs.subList(2, cmdArgs.size());
+
+                    StringBuilder name = new StringBuilder();
+                    for(int i = 0; i < vg_name.size(); i++){
+                        name.append(vg_name.get(i));
+                        if(i < vg_name.size()-1){
+                            name.append(" ");
+                        }
+                    }
+                    rate_game(name.toString(), rating);
+                } catch (NumberFormatException nfe) {
+                    System.out.println("Please enter a number rating. Usage: rate_game <star rating: 1-5> <video game title>." +
+                            " Please see error output for more detail");
+                    System.err.println(nfe.getMessage());
+                }
+            }
+        }
+
         return true;
     }
 
@@ -445,4 +470,63 @@ public class Application {
         LocalDateTime now = LocalDateTime.now();
         return dtf.format(now);
     }
+
+    private int getIdFromTitle(String title){
+        int vg_id = 0;
+        try{
+            Statement st = this.conn.createStatement();
+            ResultSet res = st.executeQuery("select \"vg_id\" from \"video_game\" where \"title\" like '%" + title + "%'");
+            if(res.next()) {
+                vg_id = res.getInt("vg_id");
+            } else {
+                System.out.println("This game does not exist");
+            }
+            st.close();
+        }
+        catch (SQLException e){
+            System.out.println("We are sorry, something went wrong. Video game may not exist. Please see error output for more detail");
+            System.err.println(e.getMessage());
+            vg_id = 0; //returns zero on error
+        }
+
+        return vg_id;
+    }
+
+    private void rate_game(String game, int rating){
+        if(!(rating <= 5 && rating >= 1)){
+            System.out.println("Please enter a valid rating number 1-5.");
+        } else {
+            int vg_id = getIdFromTitle(game);
+            if(vg_id == 0){
+                System.out.println("Enter a valid video game.");
+            } else {
+                try {
+                    PreparedStatement st2 = conn.prepareStatement("select rating from rates where vg_id = ?" +
+                            "and username like ?");
+                    st2.setInt(1, vg_id);
+                    st2.setString(2, this.currentUser);
+                    ResultSet res = st2.executeQuery();
+                    if(res.next()){
+                        PreparedStatement st3 = conn.prepareStatement("update rates set rating = ?" +
+                                "where username = ? and vg_id = ?");
+                        st3.setInt(1, rating);
+                        st3.setString(2, this.currentUser);
+                        st3.setInt(3, vg_id);
+                        st3.executeUpdate();
+                    } else {
+                        PreparedStatement st4 = conn.prepareStatement("insert into rates values (?,?,?)");
+                        st4.setString(1, this.currentUser);
+                        st4.setInt(2, vg_id);
+                        st4.setInt(3, rating);
+                        st4.executeUpdate();
+                    }
+                    System.out.println("Game has been rated.");
+                } catch (SQLException e) {
+                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
+            }
+        }
+    }
+
 }

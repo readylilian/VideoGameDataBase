@@ -295,11 +295,13 @@ public class Application {
         } else {
             int vg_id = getIdFromTitle(game);
             if(vg_id == 0){
-                System.out.println("Video game may not exist.");
+                System.out.println("Enter a valid video game.");
             } else {
                 try {
-                    PreparedStatement st2 = conn.prepareStatement("select rating from rates where vg_id = ?");
+                    PreparedStatement st2 = conn.prepareStatement("select rating from rates where vg_id = ?" +
+                            "and username like ?");
                     st2.setInt(1, vg_id);
+                    st2.setString(2, this.currentUser);
                     ResultSet res = st2.executeQuery();
                     if(res.next()){
                         PreparedStatement st3 = conn.prepareStatement("update rates set rating = ?" +

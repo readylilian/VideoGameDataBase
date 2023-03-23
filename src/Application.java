@@ -1,5 +1,3 @@
-import org.postgresql.gss.GSSOutputStream;
-
 import javax.xml.transform.Result;
 import java.util.ArrayList;
 import java.util.List;
@@ -143,7 +141,13 @@ public class Application {
             else{
                 createCollection(cmdArgs.subList(1, cmdArgs.size()));
             }
-
+        }
+        if(cmd.equals("list_collections")) {
+            if (cmdArgs.size() != 1) {
+                System.out.println("Usage: list_collections");
+            } else {
+                listCollections();
+            }
         }
         if(cmd.equals("add_to_collection")){
             if(cmdArgs.size() <= 2){
@@ -161,6 +165,7 @@ public class Application {
                 deleteFromCollection(cmdArgs.subList(1, cmdArgs.size()));
             }
         }
+
         if(cmd.equals("modify_collection")){
             if(cmdArgs.size() <= 2){
                 System.out.println("Usage: modify_collection [<old colllection name>] [<new collection name>]");
@@ -175,6 +180,30 @@ public class Application {
             }
             else{
                 deleteCollection(cmdArgs.subList(1, cmdArgs.size()));
+            }
+        }
+        if(cmd.equals("rate_game")){
+            if(cmdArgs.size() < 3){
+                System.out.println("Usage: rate_game <star rating: 1-5> <video game title>");
+            } else {
+                int rating;
+                try {
+                    rating = Integer.parseInt(cmdArgs.get(1));
+                    List<String> vg_name = cmdArgs.subList(2, cmdArgs.size());
+
+                    StringBuilder name = new StringBuilder();
+                    for(int i = 0; i < vg_name.size(); i++){
+                        name.append(vg_name.get(i));
+                        if(i < vg_name.size()-1){
+                            name.append(" ");
+                        }
+                    }
+                    rate_game(name.toString(), rating);
+                } catch (NumberFormatException nfe) {
+                    System.out.println("Please enter a number rating. Usage: rate_game <star rating: 1-5> <video game title>." +
+                            " Please see error output for more detail");
+                    System.err.println(nfe.getMessage());
+                }
             }
         }
         return true;
@@ -294,6 +323,27 @@ public class Application {
 
         }
     }
+
+    private void listCollections() {
+        try {
+            PreparedStatement pst = conn.prepareStatement("select * from collection where username like ?",
+                    ResultSet.TYPE_SCROLL_SENSITIVE,
+                    ResultSet.CONCUR_UPDATABLE);
+            pst.setString(1, this.currentUser);
+            ResultSet res = pst.executeQuery();
+            if (!res.isBeforeFirst()) {
+                System.out.println("No collections found!");
+            } else {
+                printResultSet(res);
+
+            }
+
+        } catch (SQLException e) {
+            System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+            System.err.println(e.getMessage());
+        }
+    }
+
 
     private void addToCollection(List<String> args){
         String[] names = parseAddDeleteToCollection(args);
@@ -511,12 +561,23 @@ public class Application {
     }
 
     private void printResultSet(ResultSet res) throws SQLException{
-        while(res.next()){
-            for(int i = 1; i <= res.getMetaData().getColumnCount(); i++){
-                System.out.print(res.getString(i) + " ");
+        ResultSetMetaData rsmd = res.getMetaData();
+        int columnsNumber = rsmd.getColumnCount();
+        System.out.printf("----------------------------------------------------------------------%n");
+        if (res.isBeforeFirst()) {
+            for (int i = 1; i <= columnsNumber; i++) {
+                System.out.printf("| %-20s ", rsmd.getColumnName(i));
             }
-            System.out.println();
+            System.out.println("|");
         }
+        System.out.printf("----------------------------------------------------------------------%n");
+        while (res.next()) {
+            for (int i = 1; i <= columnsNumber; i++) {
+                System.out.printf("| %-20s ", res.getString(i));
+            }
+            System.out.println("|");
+        }
+        System.out.printf("----------------------------------------------------------------------%n");
     }
 
     private String getCurrentDateTime(){
@@ -524,4 +585,63 @@ public class Application {
         LocalDateTime now = LocalDateTime.now();
         return dtf.format(now);
     }
+
+    private int getIdFromTitle(String title){
+        int vg_id = 0;
+        try{
+            Statement st = this.conn.createStatement();
+            ResultSet res = st.executeQuery("select \"vg_id\" from \"video_game\" where \"title\" like '%" + title + "%'");
+            if(res.next()) {
+                vg_id = res.getInt("vg_id");
+            } else {
+                System.out.println("This game does not exist");
+            }
+            st.close();
+        }
+        catch (SQLException e){
+            System.out.println("We are sorry, something went wrong. Video game may not exist. Please see error output for more detail");
+            System.err.println(e.getMessage());
+            vg_id = 0; //returns zero on error
+        }
+
+        return vg_id;
+    }
+
+    private void rate_game(String game, int rating){
+        if(!(rating <= 5 && rating >= 1)){
+            System.out.println("Please enter a valid rating number 1-5.");
+        } else {
+            int vg_id = getIdFromTitle(game);
+            if(vg_id == 0){
+                System.out.println("Enter a valid video game.");
+            } else {
+                try {
+                    PreparedStatement st2 = conn.prepareStatement("select rating from rates where vg_id = ?" +
+                            "and username like ?");
+                    st2.setInt(1, vg_id);
+                    st2.setString(2, this.currentUser);
+                    ResultSet res = st2.executeQuery();
+                    if(res.next()){
+                        PreparedStatement st3 = conn.prepareStatement("update rates set rating = ?" +
+                                "where username = ? and vg_id = ?");
+                        st3.setInt(1, rating);
+                        st3.setString(2, this.currentUser);
+                        st3.setInt(3, vg_id);
+                        st3.executeUpdate();
+                    } else {
+                        PreparedStatement st4 = conn.prepareStatement("insert into rates values (?,?,?)");
+                        st4.setString(1, this.currentUser);
+                        st4.setInt(2, vg_id);
+                        st4.setInt(3, rating);
+                        st4.executeUpdate();
+                    }
+                    System.out.println("Game has been rated.");
+                } catch (SQLException e) {
+                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
+            }
+        }
+    }
+
 }

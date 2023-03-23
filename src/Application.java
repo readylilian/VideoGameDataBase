@@ -272,7 +272,7 @@ public class Application {
     }
 
     private void addToCollection(List<String> args){
-        String[] names = parseAddToCollection(args);
+        String[] names = parseAddDeleteToCollection(args);
         String gameName = names[0];
         String collectionName = names[1];
         try{
@@ -350,7 +350,35 @@ public class Application {
         }
     }
 
-    private String[] parseAddToCollection(List<String> args){
+    private void deleteFromCollection(List<String> args){
+        String[] names = parseAddDeleteToCollection(args);
+        String gameName = names[0];
+        String collectionName = names[1];
+        try{
+            PreparedStatement queryCollectionExists = conn.prepareStatement("select collection_id from collection " +
+                    "where username like ? and name like ?");
+            queryCollectionExists.setString(1, currentUser);
+            queryCollectionExists.setString(2, collectionName);
+            ResultSet res = queryCollectionExists.executeQuery();
+            if(res.next()) { //check if collection exists
+                int collection_id = res.getInt("collection_id");
+                PreparedStatement queryGameExists = conn.prepareStatement("select vg_id from video_game " +
+                        "where title like ?");
+                queryGameExists.setString(1, gameName);
+                res = queryGameExists.executeQuery();
+                if (res.next()) { //check if game exists
+                    int vg_id = res.getInt("vg_id");
+                    //if we get here, game and collection exist
+                    System.out.println("not yet finished");
+                }
+            }
+        } catch (SQLException e){
+            System.out.println("error");
+            System.err.println(e.getMessage());
+        }
+    }
+
+    private String[] parseAddDeleteToCollection(List<String> args){
         StringBuilder both = new StringBuilder();
         for(int i = 0; i < args.size(); i++){
             both.append(args.get(i));

@@ -15,6 +15,8 @@ public class Application {
         this.conn = conn;
     }
 
+    PreparedStatement st;
+    ResultSet res;
 
 
     private String login(){
@@ -133,6 +135,54 @@ public class Application {
                 searchFriends(cmdArgs.get(1));
             }
         }
+        if(cmd.equals("search_game")){
+            if(cmdArgs.size() < 2){
+                System.out.println("Usage: search_game <game title to search>");
+            }
+            else{
+                searchGame(cmdArgs.subList(1, cmdArgs.size()), 0);
+            }
+        }
+        if(cmd.equals("search_game_by_platform")){
+            if(cmdArgs.size() < 2){
+                System.out.println("Usage: search_game <platform to search>");
+            }
+            else{
+                searchGame(cmdArgs.subList(1, cmdArgs.size()), 1);
+            }
+        }
+        if(cmd.equals("search_game_by_release_date")){
+            if(cmdArgs.size() < 2){
+                System.out.println("Usage: search_game <release date to search>");
+            }
+            else{
+                searchGame(cmdArgs.subList(1, cmdArgs.size()), 2);
+            }
+        }
+        if(cmd.equals("search_game_by_developer")){
+            if(cmdArgs.size() < 2){
+                System.out.println("Usage: search_game <developer to search>");
+            }
+            else{
+                searchGame(cmdArgs.subList(1, cmdArgs.size()), 3);
+            }
+        }
+        if(cmd.equals("search_game_by_price")){
+            if(cmdArgs.size() < 2){
+                System.out.println("Usage: search_game <price to search>");
+            }
+            else{
+                searchGame(cmdArgs.subList(1, cmdArgs.size()), 4);
+            }
+        }
+        if(cmd.equals("search_game_by_genre")){
+            if(cmdArgs.size() < 2){
+                System.out.println("Usage: search_game <genre to search>");
+            }
+            else{
+                searchGame(cmdArgs.subList(1, cmdArgs.size()), 5);
+            }
+        }
         return true;
     }
 
@@ -178,6 +228,106 @@ public class Application {
         }
     }
 
+    //0 = Title
+    //1 = Platform
+    //2 = Release date
+    //3 = Developers
+    //4 = Price
+    //5 = Genre
+    private void searchGame(List<String> toSearch, int searchType)
+    {
+        int vgId;
+        try {
+            PreparedStatement gameInfoCall = this.conn.prepareStatement(
+                    "select VG.title, platname, devname, pubname, playtime, VG.esrb_rating, star_rating from " +
+                            "select title, esrb_rating from \"video_game\" as VG inner join" +
+                            "select "
+            );
+
+            switch (searchType) {
+                case 0:
+                        StringBuilder search = new StringBuilder();
+                        for (int i = 0; i < toSearch.size(); i++) {
+                            search.append(toSearch.get(i));
+                            if (i < toSearch.size() - 1) {
+                                search.append(" ");
+                            }
+                        }
+                        //String formattedEmail = "%"+toSearch+"%";
+                        PreparedStatement st = this.conn.prepareStatement(
+                                "select vg_id,title,esrb_rating from \"video_game\" where title like ?"
+                        );
+                        st.setString(1, search.toString());
+
+                        ResultSet res = st.executeQuery();
+                        if (res != null) {
+                            while (!res.isAfterLast()) {
+
+                            }
+                        }
+                        System.out.println("Games that match your search:");
+                        //printResultSet(res);
+                        st.close();
+                    break;
+            /*case 1:
+                try{
+
+                }
+                catch (SQLException e)
+                {
+                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
+                break;
+            case 2:
+                try{
+
+                }
+                catch (SQLException e)
+                {
+                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
+                break;
+            case 3:
+                try{
+
+                }
+                catch (SQLException e)
+                {
+                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
+                break;
+            case 4:
+                try{
+
+                }
+                catch (SQLException e)
+                {
+                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
+                break;
+            case 5:
+                try{
+
+                }
+                catch (SQLException e)
+                {
+                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
+                break;*/
+            }
+        }
+        catch (SQLException e)
+        {
+            System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+            System.err.println(e.getMessage());
+        }
+
+    }
     private int getResultSetRowCount(ResultSet res) throws SQLException {
         int size = 0;
         while (res.next()) {

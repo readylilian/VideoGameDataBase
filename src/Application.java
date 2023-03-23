@@ -206,6 +206,21 @@ public class Application {
                 }
             }
         }
+        if(cmd.toLowerCase(Locale.ROOT).equals("help")){
+            System.out.println("""
+                    Here are the commands you can use:
+                    add_friend <username of friend you want>
+                    remove_friend <username of friend you would like to remove>
+                    search_friends <email to search>
+                    create_collection <name of collection>
+                    list_collections
+                    add_to_collection [<game name>] [<collection name>]
+                    delete_from_collection [<game name>] [<collection name>]
+                    modify_collection [<old colllection name>] [<new collection name>]
+                    delete_collection <collection name>
+                    rate_game <star rating: 1-5> <video game title>
+                    help - see this message again""");
+        }
         return true;
     }
 

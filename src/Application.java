@@ -165,6 +165,23 @@ public class Application {
                 deleteFromCollection(cmdArgs.subList(1, cmdArgs.size()));
             }
         }
+
+        if(cmd.equals("modify_collection")){
+            if(cmdArgs.size() <= 2){
+                System.out.println("Usage: modify_collection [<old colllection name>] [<new collection name>]");
+            }
+            else{
+                modifyCollection(cmdArgs.subList(1, cmdArgs.size()));
+            }
+        }
+        if(cmd.equals("delete_collection")){
+            if(cmdArgs.size() < 2){
+                System.out.println("Usage: delete_collection <collection name>");
+            }
+            else{
+                deleteCollection(cmdArgs.subList(1, cmdArgs.size()));
+            }
+        }
         if(cmd.equals("rate_game")){
             if(cmdArgs.size() < 3){
                 System.out.println("Usage: rate_game <star rating: 1-5> <video game title>");
@@ -453,6 +470,69 @@ public class Application {
             queryCollectionExists.close();
         } catch (SQLException e){
             System.out.println("error");
+            System.err.println(e.getMessage());
+        }
+    }
+
+    private void modifyCollection(List<String> args){
+        String[] names = parseAddDeleteToCollection(args);
+        String oldName = names[0];
+        String newName = names[1];
+        try {
+            PreparedStatement queryCollectionExists = conn.prepareStatement("select collection_id from collection " +
+                    "where username like ? and name like ?");
+            queryCollectionExists.setString(1, currentUser);
+            queryCollectionExists.setString(2, oldName);
+            ResultSet res = queryCollectionExists.executeQuery();
+            if (res.next()) { //check if collection exists
+                PreparedStatement updateName = conn.prepareStatement("update collection set name = ? " +
+                        "where username = ?");
+                updateName.setString(1, newName);
+                updateName.setString(2, currentUser);
+                updateName.executeUpdate();
+                System.out.println("Successfully updated " + oldName + " to " + newName);
+                updateName.close();
+            } else{
+                System.out.println("Sorry, you have no such collection");
+            }
+            queryCollectionExists.close();
+        } catch (SQLException e){
+            System.out.println("Sorry, something went wrong");
+            System.err.println(e.getMessage());
+        }
+
+    }
+
+    private void deleteCollection(List<String> args){
+        StringBuilder name = new StringBuilder();
+        for(int i = 0; i < args.size(); i++){
+            name.append(args.get(i));
+            if(i < args.size()-1){
+                name.append(" ");
+            }
+        }
+        try {
+            PreparedStatement queryCollectionExists = conn.prepareStatement("select collection_id from collection " +
+                    "where username like ? and name like ?");
+            queryCollectionExists.setString(1, currentUser);
+            queryCollectionExists.setString(2, name.toString());
+            ResultSet res = queryCollectionExists.executeQuery();
+            if (res.next()) { //check if collection exists
+                int collection_id = res.getInt("collection_id");
+                System.out.println(collection_id);
+                PreparedStatement deleteCollection = conn.prepareStatement("delete from collection where name like ?");
+                deleteCollection.setString(1, name.toString());
+                PreparedStatement deleteCollectionContents = conn.prepareStatement("delete from collection_contains where collection_id = ?");
+                deleteCollectionContents.setInt(1, collection_id);
+                deleteCollection.executeUpdate();
+                deleteCollectionContents.executeUpdate();
+                System.out.println("Successfully deleted your collection " + name);
+            } else{
+                System.out.println("Sorry, you have no such collection");
+            }
+            queryCollectionExists.close();
+        } catch (SQLException e){
+            System.out.println("Sorry, something went wrong. please try again");
             System.err.println(e.getMessage());
         }
     }

@@ -238,10 +238,24 @@ public class Application {
     {
         int vgId;
         try {
-            PreparedStatement gameInfoCall = this.conn.prepareStatement(
+            /*PreparedStatement gameInfoCall = this.conn.prepareStatement(
                     "select VG.title, platname, devname, pubname, playtime, VG.esrb_rating, star_rating from " +
                             "select title, esrb_rating from \"video_game\" as VG inner join" +
                             "select "
+            );*/
+
+            PreparedStatement gameInfoCall = this.conn.prepareStatement(
+                "SELECT DISTINCT VG.title, plat.name, cdev.name, cpub.name, play.total_playtime, VG.esrb_rating, rate.rating, rate.username FROM\n" +
+                        "    \"video_game\" as VG INNER JOIN\n" +
+                        "        \"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN\n" +
+                        "            \"creator\" as cdev ON cdev.creator_id = dev.creator_id INNER JOIN\n" +
+                        "                \"publishes\" as pub ON VG.vg_id = pub.vg_id INNER JOIN\n" +
+                        "                    \"creator\" as cpub ON cpub.creator_id = pub.creator_id INNER JOIN\n" +
+                        "                        \"plays\" as play ON VG.vg_id = play.vg_id INNER JOIN\n" +
+                        "                            \"rates\" as rate ON VG.vg_id= rate.vg_id INNER JOIN\n" +
+                        "                                \"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN\n" +
+                        "                                    \"platform\" as plat ON plat.platform_id = vgplat.platform_id\n" +
+                        "WHERE VG.vg_id = ? AND plat.platform_id = vgplat.platform_id"
             );
 
             switch (searchType) {
@@ -262,7 +276,7 @@ public class Application {
                         ResultSet res = st.executeQuery();
                         if (res != null) {
                             while (!res.isAfterLast()) {
-
+                                gameInfoCall.setString(1, res.);
                             }
                         }
                         System.out.println("Games that match your search:");

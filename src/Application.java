@@ -236,7 +236,8 @@ public class Application {
     //5 = Genre
     private void searchGame(List<String> toSearch, int searchType)
     {
-        int vgId;
+        //int vgId;
+        ResultSet gameInfo;
         try {
             /*PreparedStatement gameInfoCall = this.conn.prepareStatement(
                     "select VG.title, platname, devname, pubname, playtime, VG.esrb_rating, star_rating from " +
@@ -245,17 +246,16 @@ public class Application {
             );*/
 
             PreparedStatement gameInfoCall = this.conn.prepareStatement(
-                "SELECT DISTINCT VG.title, plat.name, cdev.name, cpub.name, play.total_playtime, VG.esrb_rating, rate.rating, rate.username FROM\n" +
-                        "    \"video_game\" as VG INNER JOIN\n" +
-                        "        \"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN\n" +
-                        "            \"creator\" as cdev ON cdev.creator_id = dev.creator_id INNER JOIN\n" +
-                        "                \"publishes\" as pub ON VG.vg_id = pub.vg_id INNER JOIN\n" +
-                        "                    \"creator\" as cpub ON cpub.creator_id = pub.creator_id INNER JOIN\n" +
-                        "                        \"plays\" as play ON VG.vg_id = play.vg_id INNER JOIN\n" +
-                        "                            \"rates\" as rate ON VG.vg_id= rate.vg_id INNER JOIN\n" +
-                        "                                \"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN\n" +
-                        "                                    \"platform\" as plat ON plat.platform_id = vgplat.platform_id\n" +
-                        "WHERE VG.vg_id = ? AND plat.platform_id = vgplat.platform_id"
+                "SELECT DISTINCT VG.title, plat.name, cdev.name, cpub.name, play.total_playtime, VG.esrb_rating FROM" +
+                        " \"video_game\" as VG INNER JOIN" +
+                        " \"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN" +
+                        " \"creator\" as cdev ON cdev.creator_id = dev.creator_id INNER JOIN" +
+                        " \"publishes\" as pub ON VG.vg_id = pub.vg_id INNER JOIN" +
+                        " \"creator\" as cpub ON cpub.creator_id = pub.creator_id INNER JOIN" +
+                        " \"plays\" as play ON VG.vg_id = play.vg_id INNER JOIN" +
+                        " \"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
+                        " \"platform\" as plat ON plat.platform_id = vgplat.platform_id" +
+                        " WHERE VG.vg_id = ? AND plat.platform_id = vgplat.platform_id"
             );
 
             switch (searchType) {
@@ -275,13 +275,18 @@ public class Application {
 
                         ResultSet res = st.executeQuery();
                         if (res != null) {
+                            res.next();
                             while (!res.isAfterLast()) {
-                                gameInfoCall.setString(1, res.);
+                                //Set the vg_id
+                                gameInfoCall.setInt(1, res.getInt("vg_id"));
+                                gameInfo = gameInfoCall.executeQuery();
+                                res.next();
                             }
                         }
                         System.out.println("Games that match your search:");
                         //printResultSet(res);
                         st.close();
+                        gameInfoCall.close();
                     break;
             /*case 1:
                 try{

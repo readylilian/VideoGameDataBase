@@ -146,11 +146,19 @@ public class Application {
 
         }
         if(cmd.equals("add_to_collection")){
-            if(cmdArgs.size() < 2){
+            if(cmdArgs.size() <= 2){
                 System.out.println("Usage: add_to_collection [<game name>] [<collection name>]");
             }
             else {
                 addToCollection(cmdArgs.subList(1, cmdArgs.size()));
+            }
+        }
+        if(cmd.equals("delete_from_collection")){
+            if(cmdArgs.size() <= 2){
+                System.out.println("Usage: delete_from_collection [<game name>] [<collection name>]");
+            }
+            else{
+                deleteFromCollection(cmdArgs.subList(1, cmdArgs.size()));
             }
         }
         return true;
@@ -369,9 +377,31 @@ public class Application {
                 if (res.next()) { //check if game exists
                     int vg_id = res.getInt("vg_id");
                     //if we get here, game and collection exist
-                    System.out.println("not yet finished");
+                    //must check if game is already in collection
+                    PreparedStatement checkDuplicate = conn.prepareStatement("(select * from collection_contains" +
+                            " where collection_id = ? and vg_id = ?)");
+                    checkDuplicate.setInt(1, collection_id);
+                    checkDuplicate.setInt(2, vg_id);
+                    ResultSet exists = checkDuplicate.executeQuery();
+                    if(exists.next()) { //if it is in the collection, remove it
+                        PreparedStatement deleteGame = conn.prepareStatement("delete from collection_contains " +
+                                "where collection_id = ? and vg_id = ?");
+                        deleteGame.setInt(1, collection_id);
+                        deleteGame.setInt(2, vg_id);
+                        deleteGame.executeUpdate();
+                        System.out.println("Successfully delete " + gameName + " from " + collectionName);
+                    } else {
+                        System.out.println("Sorry, " + gameName +" is not in " + collectionName);
+                    }
+                    checkDuplicate.close();
+                } else {
+                    System.out.println("Sorry, that game does not exist");
                 }
+                queryGameExists.close();
+            } else{
+                System.out.println("Sorry, you have no such collection");
             }
+            queryCollectionExists.close();
         } catch (SQLException e){
             System.out.println("error");
             System.err.println(e.getMessage());

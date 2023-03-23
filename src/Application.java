@@ -16,9 +16,9 @@ public class Application {
     }
 
     PreparedStatement st;
-    ResultSet res;
-
-
+    ResultSet res = null;
+    ResultSet gameInfo = null;
+    String lastTitle = "";
     private String login(){
         while(true){
             try{
@@ -237,7 +237,7 @@ public class Application {
     private void searchGame(List<String> toSearch, int searchType)
     {
         //int vgId;
-        ResultSet gameInfo;
+
         try {
             /*PreparedStatement gameInfoCall = this.conn.prepareStatement(
                     "select VG.title, platname, devname, pubname, playtime, VG.esrb_rating, star_rating from " +
@@ -246,7 +246,7 @@ public class Application {
             );*/
 
             PreparedStatement gameInfoCall = this.conn.prepareStatement(
-                "SELECT DISTINCT VG.title, plat.name, cdev.name, cpub.name, play.total_playtime, VG.esrb_rating FROM" +
+                "SELECT DISTINCT VG.title, plat.name, cdev.name, cpub.name, play.total_playtime, VG.esrb_rating, VG.vg_id FROM" +
                         " \"video_game\" as VG INNER JOIN" +
                         " \"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN" +
                         " \"creator\" as cdev ON cdev.creator_id = dev.creator_id INNER JOIN" +
@@ -273,20 +273,13 @@ public class Application {
                         );
                         st.setString(1, search.toString());
 
-                        ResultSet res = st.executeQuery();
-                        if (res != null) {
-                            res.next();
-                            while (!res.isAfterLast()) {
-                                //Set the vg_id
-                                gameInfoCall.setInt(1, res.getInt("vg_id"));
-                                gameInfo = gameInfoCall.executeQuery();
-                                res.next();
-                            }
+                        res = st.executeQuery();
+                        while(res.next()) {
+                            //Set the vg_id
+                            gameInfoCall.setInt(1, res.getInt("vg_id"));
+                            gameInfo = gameInfoCall.executeQuery();
                         }
-                        System.out.println("Games that match your search:");
-                        //printResultSet(res);
-                        st.close();
-                        gameInfoCall.close();
+                    st.close();
                     break;
             /*case 1:
                 try{
@@ -339,6 +332,17 @@ public class Application {
                 }
                 break;*/
             }
+
+            if(gameInfo != null)
+            {
+                System.out.println("Games that match your search:");
+                printGameSearchResults(gameInfo);
+            }
+            else
+            {
+                System.out.println("There are currently no games that match your search");
+            }
+            gameInfoCall.close();
         }
         catch (SQLException e)
         {
@@ -347,6 +351,52 @@ public class Application {
         }
 
     }
+    private void printGameSearchResults(ResultSet res) throws SQLException{
+        System.out.printf("------------------------------------------------------------------------------------------" +
+                "---------------------------------------------------------------%n");
+        System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                "Title", "Platforms", "Developers", "Publishers","Playtime","Age Rating", "Your Rating");
+        while(res.next()){
+            //String lastTitle = "";
+            String formattedPlay = String.format("%d:%2d",(res.getInt(5)/60),(res.getInt(5)%60));
+            String title = res.getString(1);
+            if(title.length() > 40)
+            {
+                title = title.substring(0,40);
+            }
+            if(!res.getString(1).equals(lastTitle)) {
+                System.out.printf("--------------------------------------------------------------------------------" +
+                        "-------------------------------------------------------------------------%n");
+                //Check for review
+                PreparedStatement reviewCheck = this.conn.prepareStatement(
+                        "SELECT rating FROM rates WHERE username LIKE ? AND vg_id = ?");
+                reviewCheck.setString(1, this.currentUser);
+                reviewCheck.setInt(2, res.getInt("vg_id"));
+                ResultSet reviews = reviewCheck.executeQuery();
+                if(reviews.next())
+                {
+                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                            title, res.getString(2), res.getString(3),
+                            res.getString(4),formattedPlay, res.getString(6),
+                            reviews.getString(1));
+                }
+                else {
+                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                            title, res.getString(2), res.getString(3),
+                            res.getString(4), formattedPlay, res.getString(6), "No rating");
+                }
+                lastTitle = res.getString(1);
+            }
+            else
+            {
+                System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                        "", res.getString(2), res.getString(3),
+                        res.getString(4), formattedPlay, res.getString(6), "");
+            }
+            //System.out.println();
+        }
+    }
+
     private int getResultSetRowCount(ResultSet res) throws SQLException {
         int size = 0;
         while (res.next()) {

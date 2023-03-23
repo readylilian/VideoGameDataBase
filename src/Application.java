@@ -508,10 +508,12 @@ public class Application {
             queryCollectionExists.setString(2, oldName);
             ResultSet res = queryCollectionExists.executeQuery();
             if (res.next()) { //check if collection exists
+                int collection_id = res.getInt("collection_id");
                 PreparedStatement updateName = conn.prepareStatement("update collection set name = ? " +
-                        "where username = ?");
+                        "where username = ? and collection_id = ?");
                 updateName.setString(1, newName);
                 updateName.setString(2, currentUser);
+                updateName.setInt(3, collection_id);
                 updateName.executeUpdate();
                 System.out.println("Successfully updated " + oldName + " to " + newName);
                 updateName.close();

@@ -211,24 +211,32 @@ public class Application {
 
     private void addFriend(String username){
         try{
-            String checkFriendQuery = "select * from friends_with where uid like ? and fid like ?";
-            String addFriendUpdate = "insert into friends_with values (?, ?)";
-            PreparedStatement checkFriend = conn.prepareStatement(checkFriendQuery);
-            checkFriend.setString(1, currentUser);
-            checkFriend.setString(2, username);
-            ResultSet res = checkFriend.executeQuery();
-            if(!res.next()){
-                PreparedStatement addFriend = conn.prepareStatement(addFriendUpdate);
-                addFriend.setString(1, currentUser);
-                addFriend.setString(2, username);
-                addFriend.executeUpdate();
-                System.out.println("Success! You are now friends with " + username);
-                addFriend.close();
+            PreparedStatement checkUserExists = conn.prepareStatement("select * from \"user\" where username like ?");
+            checkUserExists.setString(1, username);
+            ResultSet friendExists = checkUserExists.executeQuery();
+            if(friendExists.next()){
+                String checkFriendQuery = "select * from friends_with where uid like ? and fid like ?";
+                String addFriendUpdate = "insert into friends_with values (?, ?)";
+                PreparedStatement checkFriend = conn.prepareStatement(checkFriendQuery);
+                checkFriend.setString(1, currentUser);
+                checkFriend.setString(2, username);
+                ResultSet res = checkFriend.executeQuery();
+                if(!res.next()){
+                    PreparedStatement addFriend = conn.prepareStatement(addFriendUpdate);
+                    addFriend.setString(1, currentUser);
+                    addFriend.setString(2, username);
+                    addFriend.executeUpdate();
+                    System.out.println("Success! You are now friends with " + username);
+                    addFriend.close();
+                }
+                else{
+                    System.out.println("Sorry, you are already friends with that user");
+                }
+                checkFriend.close();
+            } else {
+                System.out.println("Sorry, that user does not exist!");
             }
-            else{
-                System.out.println("Sorry, you are already friends with that user");
-            }
-            checkFriend.close();
+            checkUserExists.close();
         }
         catch (SQLException e){
             System.out.println("We are sorry, something went wrong. Either that user does not exist, " +

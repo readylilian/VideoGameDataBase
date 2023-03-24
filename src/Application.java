@@ -1,9 +1,7 @@
+import java.sql.Date;
 import java.text.SimpleDateFormat;
 import javax.xml.transform.Result;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Scanner;
+import java.util.*;
 import java.sql.*;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
@@ -487,7 +485,7 @@ public class Application {
 
     }
     private void printGameSearchResults(ResultSet res) throws SQLException{
-
+        HashSet<String> seen_info = new HashSet<>();
         while(res.next()){
 
             //Format the initial strings
@@ -532,13 +530,38 @@ public class Application {
                 playCheck.close();
                 reviewCheck.close();
                 lastTitle = res.getString(1);
+                seen_info.add(res.getString(2));
+                seen_info.add(res.getString(3));
+                seen_info.add(res.getString(4));
+
             }
             //Otherwise print out items that can change for every row
             else
             {
-                System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
-                        "", res.getString(2), res.getString(3),
-                        res.getString(4), "", "", "");
+                if(!seen_info.contains(res.getString(2)) && !seen_info.contains(res.getString(3)) && !seen_info.contains(res.getString(4))){
+                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                            "", res.getString(2), res.getString(3),
+                            res.getString(4), "", "", "");
+//                    System.out.println(seen_info);
+                    seen_info.add(res.getString(2));
+                    seen_info.add(res.getString(3));
+                    seen_info.add(res.getString(4));
+                } else if(!seen_info.contains(res.getString(2))){
+                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                            "", res.getString(2), "",
+                            "", "", "", "");
+                    seen_info.add(res.getString(2));
+                } else if(!seen_info.contains(res.getString(3))){
+                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                            "", "", res.getString(3),
+                            "", "", "", "");
+                    seen_info.add(res.getString(3));
+                } else if(!seen_info.contains(res.getString(4))){
+                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                            "", "", "",
+                            res.getString(4), "", "", "");
+                    seen_info.add(res.getString(4));
+                }
             }
         }
     }

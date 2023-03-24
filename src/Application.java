@@ -181,7 +181,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_genre")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_genr <genre to search>");
+                System.out.println("Usage: search_game_by_genre <genre to search>");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 5);
@@ -272,7 +272,13 @@ public class Application {
                     modify_collection [<old colllection name>] [<new collection name>]
                     delete_collection <collection name>
                     rate_game <star rating: 1-5> <video game title>
-                    help - see this message again""");
+                    help - see this message again
+                    search_game <game title to search>
+                    search_game_by_platform <platform to search>
+                    search_game_by_release_date <YYYY-MM-DD>
+                    search_game_by_developer <developer to search>
+                    search_game_by_price <price to search>
+                    search_game_by_genre <genre to search>""");
         }
         return true;
     }

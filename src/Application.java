@@ -17,7 +17,8 @@ public class Application {
 
     PreparedStatement st;
     ResultSet res = null;
-    ResultSet gameInfo = null;
+    ResultSet gameInfo;
+    List<ResultSet> allGames = new ArrayList<>();
     String lastTitle = "";
     private String login(){
         while(true){
@@ -228,7 +229,6 @@ public class Application {
         }
     }
 
-    //0 = Title
     //1 = Platform
     //2 = Release date
     //3 = Developers
@@ -236,29 +236,22 @@ public class Application {
     //5 = Genre
     private void searchGame(List<String> toSearch, int searchType)
     {
-        //int vgId;
-
         try {
-            /*PreparedStatement gameInfoCall = this.conn.prepareStatement(
-                    "select VG.title, platname, devname, pubname, playtime, VG.esrb_rating, star_rating from " +
-                            "select title, esrb_rating from \"video_game\" as VG inner join" +
-                            "select "
-            );*/
-
+            //Used to get all needed info for print
             PreparedStatement gameInfoCall = this.conn.prepareStatement(
-                "SELECT DISTINCT VG.title, plat.name, cdev.name, cpub.name, play.total_playtime, VG.esrb_rating, VG.vg_id FROM" +
+                "SELECT DISTINCT VG.title, plat.name, cdev.name, cpub.name, VG.esrb_rating, VG.vg_id FROM" +
                         " \"video_game\" as VG INNER JOIN" +
                         " \"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN" +
                         " \"creator\" as cdev ON cdev.creator_id = dev.creator_id INNER JOIN" +
                         " \"publishes\" as pub ON VG.vg_id = pub.vg_id INNER JOIN" +
                         " \"creator\" as cpub ON cpub.creator_id = pub.creator_id INNER JOIN" +
-                        " \"plays\" as play ON VG.vg_id = play.vg_id INNER JOIN" +
                         " \"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
                         " \"platform\" as plat ON plat.platform_id = vgplat.platform_id" +
                         " WHERE VG.vg_id = ? AND plat.platform_id = vgplat.platform_id"
             );
 
             switch (searchType) {
+                //Title
                 case 0:
                         StringBuilder search = new StringBuilder();
                         for (int i = 0; i < toSearch.size(); i++) {
@@ -267,20 +260,35 @@ public class Application {
                                 search.append(" ");
                             }
                         }
-                        //String formattedEmail = "%"+toSearch+"%";
+                        //Get the vg_id from the title
                         PreparedStatement st = this.conn.prepareStatement(
-                                "select vg_id,title,esrb_rating from \"video_game\" where title like *?*"
+                                "select vg_id,title,esrb_rating from \"video_game\" where title like ?"
                         );
-                        st.setString(1, search.toString());
+                        st.setString(1, "%" +search.toString() + "%");
 
                         res = st.executeQuery();
-                        while(res.next()) {
-                            //Set the vg_id
-                            gameInfoCall.setInt(1, res.getInt("vg_id"));
-                            gameInfo = gameInfoCall.executeQuery();
+                        //If anything is returned, print it
+                        if(!res.wasNull())
+                        {
+                            System.out.println("Games that match your search:");
+                            System.out.printf("------------------------------------------------------------------------------------------" +
+                                    "---------------------------------------------------------------%n");
+                            System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                                    "Title", "Platforms", "Developers", "Publishers","Playtime","Age Rating", "Your Rating");
+                            //print out each game in a nice way
+                            while(res.next()) {
+                                //Set the vg_id
+                                gameInfoCall.setInt(1, res.getInt("vg_id"));
+                                printGameSearchResults(gameInfoCall.executeQuery());
+                            }
                         }
-                    st.close();
+                        else
+                        {
+                            System.out.println("There are currently no games that match your search");
+                        }
+                        st.close();
                     break;
+
             /*case 1:
                 try{
 
@@ -332,16 +340,6 @@ public class Application {
                 }
                 break;*/
             }
-
-            if(gameInfo != null)
-            {
-                System.out.println("Games that match your search:");
-                printGameSearchResults(gameInfo);
-            }
-            else
-            {
-                System.out.println("There are currently no games that match your search");
-            }
             gameInfoCall.close();
         }
         catch (SQLException e)
@@ -352,18 +350,18 @@ public class Application {
 
     }
     private void printGameSearchResults(ResultSet res) throws SQLException{
-        System.out.printf("------------------------------------------------------------------------------------------" +
-                "---------------------------------------------------------------%n");
-        System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
-                "Title", "Platforms", "Developers", "Publishers","Playtime","Age Rating", "Your Rating");
+
         while(res.next()){
-            //String lastTitle = "";
-            String formattedPlay = String.format("%d:%2d",(res.getInt(5)/60),(res.getInt(5)%60));
+
+            //Format the initial strings
+            String formattedPlay = "0:00";
+            String reviewString = "No rating";
             String title = res.getString(1);
             if(title.length() > 40)
             {
                 title = title.substring(0,40);
             }
+            //If title hasn't been printed yet, print first row items
             if(!res.getString(1).equals(lastTitle)) {
                 System.out.printf("--------------------------------------------------------------------------------" +
                         "-------------------------------------------------------------------------%n");
@@ -373,27 +371,38 @@ public class Application {
                 reviewCheck.setString(1, this.currentUser);
                 reviewCheck.setInt(2, res.getInt("vg_id"));
                 ResultSet reviews = reviewCheck.executeQuery();
+                //Check for played
+                PreparedStatement playCheck = this.conn.prepareStatement(
+                        "SELECT total_playtime FROM plays WHERE username LIKE ? AND vg_id = ?");
+                playCheck.setString(1, this.currentUser);
+                playCheck.setInt(2, res.getInt("vg_id"));
+                ResultSet plays = playCheck.executeQuery();
+
                 if(reviews.next())
                 {
-                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
-                            title, res.getString(2), res.getString(3),
-                            res.getString(4),formattedPlay, res.getString(6),
-                            reviews.getString(1));
+                    reviewString = reviews.getString(1);
                 }
-                else {
-                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
-                            title, res.getString(2), res.getString(3),
-                            res.getString(4), formattedPlay, res.getString(6), "No rating");
+                if(plays.next())
+                {
+                    formattedPlay = String.format("%d:%02d",(plays.getInt(1)/60),(plays.getInt(1)%60));
                 }
+                //Then print nicely and close the resultsets
+                System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                        title, res.getString(2), res.getString(3),
+                        res.getString(4),formattedPlay, res.getString(5),
+                        reviewString);
+
+                playCheck.close();
+                reviewCheck.close();
                 lastTitle = res.getString(1);
             }
+            //Otherwise print out items that can change for every row
             else
             {
                 System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
                         "", res.getString(2), res.getString(3),
-                        res.getString(4), formattedPlay, res.getString(6), "");
+                        res.getString(4), "", "", "");
             }
-            //System.out.println();
         }
     }
 

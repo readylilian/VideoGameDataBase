@@ -501,7 +501,7 @@ public class Application {
         String[] terms = parseAddDeleteToCollection(toSearch);
         String search = terms[0];
         String sortTerm = terms[1];
-        String searchTypeOrder = "";
+        String vgSearchOrder = " ORDER BY VG.title ASC, vgplat.release_date ASC";
         String searchCall = "SELECT DISTINCT  VG.title, plat.name, cdev.name, cpub.name, VG.esrb_rating, VG.vg_id, " +
                 "vgplat.release_date, vgplat.price, genre.genre_name  FROM" +
                 " \"video_game\" as VG INNER JOIN" +
@@ -517,13 +517,13 @@ public class Application {
             switch (sortTerm) {
                 //Default
                 case "":
-                    searchCall += " ORDER BY VG.title ASC";
+                    vgSearchOrder = " ORDER BY VG.title ASC";
                     break;
                 case "a_title":
-                    searchCall += " ORDER BY VG.title ASC";
+                    vgSearchOrder = " ORDER BY VG.title ASC";
                     break;
                 case "d_title":
-                    searchCall += " ORDER BY VG.title DESC";
+                    vgSearchOrder = " ORDER BY VG.title DESC";
                     break;
                 case "a_price":
                     searchCall += " ORDER BY vgplat.price ASC";
@@ -553,7 +553,7 @@ public class Application {
                         st = this.conn.prepareStatement(
                                 "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
                                         "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id" +
-                                        " where title like ? ORDER BY VG.title ASC, vgplat.release_date ASC"
+                                        " where title like ? " + vgSearchOrder
                         );
                         st.setString(1, "%" +search.toString() + "%");
                     break;
@@ -564,7 +564,7 @@ public class Application {
                             "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
                                     "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
                                     "\"platform\" as plat ON vgplat.platform_id = plat.platform_id " +
-                                    "where plat.name like ? ORDER BY VG.title ASC, vgplat.release_date ASC"
+                                    "where plat.name like ? " + vgSearchOrder
                     );
                     st.setString(1, "%" +search.toString() + "%");
                 break;
@@ -575,7 +575,7 @@ public class Application {
                 st = this.conn.prepareStatement(
                         "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
                                 "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id"+
-                                " where CAST(vgplat.release_date AS DATE) = ? ORDER BY VG.title ASC, vgplat.release_date ASC"
+                                " where CAST(vgplat.release_date AS DATE) = ? " + vgSearchOrder
                 );
                 //st.setString(1, search.toString() + "%");
                 st.setDate(1, Date.valueOf(search.toString() + ""));
@@ -588,7 +588,7 @@ public class Application {
                                     "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
                                     "\"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN" +
                                     "\"creator\" as cdev ON cdev.creator_id = dev.creator_id" +
-                                    " WHERE cdev.name like ? ORDER BY VG.title ASC, vgplat.release_date ASC"
+                                    " WHERE cdev.name like ? " + vgSearchOrder
                     );
                     st.setString(1, "%" +search.toString() + "%");
                 break;
@@ -598,7 +598,7 @@ public class Application {
                 st = this.conn.prepareStatement(
                         "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
                                 "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id" +
-                                " where vgplat.price = ? ORDER BY VG.title ASC, vgplat.release_date ASC"
+                                " where vgplat.price = ? "+ vgSearchOrder
                 );
                 st.setInt(1, Integer.parseInt(search.toString()));
                 break;
@@ -609,7 +609,7 @@ public class Application {
                         "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
                                 "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
                                 " \"has_genre\" as genre ON VG.vg_id = genre.vg_id" +
-                                " where genre.genre_name LIKE ? ORDER BY VG.title ASC, vgplat.release_date ASC"
+                                " where genre.genre_name LIKE ? " + vgSearchOrder
                 );
                 st.setString(1, search.toString());
                 break;

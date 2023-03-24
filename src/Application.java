@@ -1,4 +1,5 @@
 import java.text.SimpleDateFormat;
+import javax.xml.transform.Result;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -186,14 +187,124 @@ public class Application {
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 5);
             }
         }
+        if(cmd.equals("create_collection")){
+            if(cmdArgs.size() < 2){
+                System.out.println("Usage: create_collection <name of collection>");
+            }
+            else{
+                createCollection(cmdArgs.subList(1, cmdArgs.size()));
+            }
+        }
+        if(cmd.equals("list_collections")) {
+            if (cmdArgs.size() != 1) {
+                System.out.println("Usage: list_collections");
+            } else {
+                listCollections();
+            }
+        }
+        if(cmd.equals("add_to_collection")){
+            if(cmdArgs.size() <= 2){
+                System.out.println("Usage: add_to_collection [<game name>] [<collection name>]");
+            }
+            else {
+                addToCollection(cmdArgs.subList(1, cmdArgs.size()));
+            }
+        }
+        if(cmd.equals("delete_from_collection")){
+            if(cmdArgs.size() <= 2){
+                System.out.println("Usage: delete_from_collection [<game name>] [<collection name>]");
+            }
+            else{
+                deleteFromCollection(cmdArgs.subList(1, cmdArgs.size()));
+            }
+        }
+
+        if(cmd.equals("modify_collection")){
+            if(cmdArgs.size() <= 2){
+                System.out.println("Usage: modify_collection [<old colllection name>] [<new collection name>]");
+            }
+            else{
+                modifyCollection(cmdArgs.subList(1, cmdArgs.size()));
+            }
+        }
+        if(cmd.equals("delete_collection")){
+            if(cmdArgs.size() < 2){
+                System.out.println("Usage: delete_collection <collection name>");
+            }
+            else{
+                deleteCollection(cmdArgs.subList(1, cmdArgs.size()));
+            }
+        }
+        if(cmd.equals("rate_game")){
+            if(cmdArgs.size() < 3){
+                System.out.println("Usage: rate_game <star rating: 1-5> <video game title>");
+            } else {
+                int rating;
+                try {
+                    rating = Integer.parseInt(cmdArgs.get(1));
+                    List<String> vg_name = cmdArgs.subList(2, cmdArgs.size());
+
+                    StringBuilder name = new StringBuilder();
+                    for(int i = 0; i < vg_name.size(); i++){
+                        name.append(vg_name.get(i));
+                        if(i < vg_name.size()-1){
+                            name.append(" ");
+                        }
+                    }
+                    rate_game(name.toString(), rating);
+                } catch (NumberFormatException nfe) {
+                    System.out.println("Please enter a number rating. Usage: rate_game <star rating: 1-5> <video game title>." +
+                            " Please see error output for more detail");
+                    System.err.println(nfe.getMessage());
+                }
+            }
+        }
+        if(cmd.toLowerCase(Locale.ROOT).equals("help")){
+            System.out.println("""
+                    Here are the commands you can use:
+                    add_friend <username of friend you want>
+                    remove_friend <username of friend you would like to remove>
+                    search_friends <email to search>
+                    create_collection <name of collection>
+                    list_collections
+                    add_to_collection [<game name>] [<collection name>]
+                    delete_from_collection [<game name>] [<collection name>]
+                    modify_collection [<old colllection name>] [<new collection name>]
+                    delete_collection <collection name>
+                    rate_game <star rating: 1-5> <video game title>
+                    help - see this message again""");
+        }
         return true;
     }
 
     private void addFriend(String username){
         try{
-            Statement st = this.conn.createStatement();
-            st.executeUpdate("insert into friends_with values (" + this.currentUser + ", "+username+")");
-            st.close();
+            PreparedStatement checkUserExists = conn.prepareStatement("select * from \"user\" where username like ?");
+            checkUserExists.setString(1, username);
+            ResultSet friendExists = checkUserExists.executeQuery();
+            if(friendExists.next()){
+                String checkFriendQuery = "select * from friends_with where uid like ? and fid like ?";
+                String addFriendUpdate = "insert into friends_with values (?, ?)";
+                PreparedStatement checkFriend = conn.prepareStatement(checkFriendQuery);
+                checkFriend.setString(1, currentUser);
+                checkFriend.setString(2, username);
+                ResultSet res = checkFriend.executeQuery();
+                if(!res.next()){
+                    PreparedStatement addFriend = conn.prepareStatement(addFriendUpdate);
+                    addFriend.setString(1, currentUser);
+                    addFriend.setString(2, username);
+                    addFriend.executeUpdate();
+                    System.out.println("Success! You are now friends with " + username);
+                    addFriend.close();
+                }
+                else{
+                    System.out.println("Sorry, you are already friends with that user");
+                }
+                checkFriend.close();
+            } else {
+                System.out.println("Sorry, that user does not exist!");
+            }
+            checkUserExists.close();
         }
         catch (SQLException e){
             System.out.println("We are sorry, something went wrong. Either that user does not exist, " +
@@ -204,10 +315,25 @@ public class Application {
 
     private void removeFriend(String username){
         try{
-            Statement st = this.conn.createStatement();
-            st.executeUpdate("delete from friends_with where UID like " + this.currentUser +
-                    " and FID like " + username);
-            st.close();
+            String checkFriendQuery = "select * from friends_with where uid like ? and fid like ?";
+            String removeFriendUpdate = "delete from friends_with where uid like ? and fid like ?";
+            PreparedStatement checkFriend = conn.prepareStatement(checkFriendQuery,
+                    ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+            checkFriend.setString(1, currentUser);
+            checkFriend.setString(2, username);
+            ResultSet res = checkFriend.executeQuery();
+            if(res.first()){
+                PreparedStatement removeFriend = conn.prepareStatement(removeFriendUpdate);
+                removeFriend.setString(1, currentUser);
+                removeFriend.setString(2, username);
+                removeFriend.executeUpdate();
+                System.out.println("Success! You are no longer friends with " + username);
+                removeFriend.close();
+            }
+            else{
+                System.out.println("Sorry, you aren't friends with that user");
+            }
+            checkFriend.close();
         }
         catch (SQLException e){
             System.out.println("We are sorry, something went wrong. Either you aren not friends with that user, " +
@@ -218,15 +344,18 @@ public class Application {
 
     private void searchFriends(String email){
         try{
-            Statement st = this.conn.createStatement();
-            ResultSet res = st.executeQuery("select username from user where email like %" + email + "%");
+            String formattedEmail = "%"+email+"%";
+//            PreparedStatement st = this.conn.prepareStatement("select \"username\" from \"user\" where \"email\" like '%'?'%'");
+            PreparedStatement st = this.conn.prepareStatement("select username from \"user\" where email like ?");
+            st.setString(1, formattedEmail);
+
+            ResultSet res = st.executeQuery();
             System.out.println("Users with emails that match your search:");
             printResultSet(res);
             st.close();
         }
         catch (SQLException e){
-            System.out.println("We are sorry, something went wrong. Either you aren not friends with that user, " +
-                    "or another error occurred. Please see error output for more detail");
+            System.out.println("We are sorry, something went wrong. Please see error output for more detail");
             System.err.println(e.getMessage());
         }
     }
@@ -407,6 +536,282 @@ public class Application {
             }
         }
     }
+    private void createCollection(List<String> nameList) {
+        try{
+            //check for duplicate collection
+            StringBuilder name = new StringBuilder();
+            for(int i = 0; i < nameList.size(); i++){
+                name.append(nameList.get(i));
+                if(i < nameList.size()-1){
+                    name.append(" ");
+                }
+            }
+            PreparedStatement pst = conn.prepareStatement("select * from collection where username = ? and name = ?");
+            pst.setString(1, this.currentUser);
+            pst.setString(2, name.toString());
+            ResultSet res = pst.executeQuery();
+            if(!res.next()) {
+                // calculate next collection id
+                Statement st = this.conn.createStatement();
+                res = st.executeQuery("select collection_id from collection order by collection_id desc limit 1;");
+                if (res.next()) {
+                    int id = 1 + res.getInt("collection_id");
+                    // insert the new collection
+                    String query = "insert into collection (collection_id, username, name) VALUES (?, ?, ?)";
+                    PreparedStatement statement = conn.prepareStatement(query);
+                    statement.setInt(1, id);
+                    statement.setString(2, this.currentUser);
+                    statement.setString(3, name.toString());
+                    statement.executeUpdate();
+                    System.out.println("New Collection " + name + " created!");
+                }
+            } else {
+                System.err.println("Collection with the name " + name + " already exists.");
+            }
+        }
+        catch (SQLException e) {
+            System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+            System.err.println(e.getMessage());
+
+        }
+    }
+
+    private void listCollections() {
+        try {
+            PreparedStatement pst = conn.prepareStatement(
+                        "SELECT c.name AS collection_name, COALESCE(COUNT(cc.vg_id), 0) AS number_of_video_games," +
+                                "CONCAT_WS(':', COALESCE(SUM(p.total_playtime) / 60, 0)," +
+                                    "SUM(p.total_playtime) % 60) AS total_play_time " +
+                            "FROM COLLECTION c " +
+                            "LEFT JOIN COLLECTION_CONTAINS cc ON c.collection_id = cc.collection_id " +
+                            "LEFT JOIN PLAYS p ON cc.vg_id = p.vg_id AND c.username = p.username " +
+                            "WHERE c.username like ? " +
+                            "GROUP BY c.collection_id, c.name;",
+                    ResultSet.TYPE_SCROLL_SENSITIVE,
+                    ResultSet.CONCUR_UPDATABLE);
+            pst.setString(1, this.currentUser);
+            ResultSet res = pst.executeQuery();
+            if (!res.isBeforeFirst()) {
+                System.out.println("No collections found!");
+            } else {
+                printResultSet(res);
+            }
+
+        } catch (SQLException e) {
+            System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+            System.err.println(e.getMessage());
+        }
+    }
+
+
+    private void addToCollection(List<String> args){
+        String[] names = parseAddDeleteToCollection(args);
+        String gameName = names[0];
+        String collectionName = names[1];
+        try{
+            PreparedStatement queryCollectionExists = conn.prepareStatement("select collection_id from collection " +
+                    "where username like ? and name like ?");
+            queryCollectionExists.setString(1, currentUser);
+            queryCollectionExists.setString(2, collectionName);
+            ResultSet res = queryCollectionExists.executeQuery();
+            if(res.next()){ //check if collection exists
+                int collection_id = res.getInt("collection_id");
+                PreparedStatement queryGameExists = conn.prepareStatement("select vg_id from video_game " +
+                        "where title like ?");
+                queryGameExists.setString(1, gameName);
+                res = queryGameExists.executeQuery();
+                if(res.next()){ //check if game exists
+                    int vg_id = res.getInt("vg_id");
+                    //if we get here, game and collection exist
+                    //must check if game is already in collection
+                    PreparedStatement checkDuplicate = conn.prepareStatement("(select * from collection_contains" +
+                            " where collection_id = ? and vg_id = ?)");
+                    checkDuplicate.setInt(1, collection_id);
+                    checkDuplicate.setInt(2, vg_id);
+                    ResultSet exists = checkDuplicate.executeQuery();
+                    if(!exists.next()){
+                        //Now we need to check if that game is on a system they own or not, and warn them if not
+                        PreparedStatement onOwnedSystem = conn.prepareStatement("select * from " +
+                                "\"video_game_on/has_platform\" as vp join \"user_has/owns_platform\" as up " +
+                                "on vp.platform_id = up.platform_id where " +
+                                "vp.vg_id = ? and up.username like ?");
+                        onOwnedSystem.setInt(1, vg_id);
+                        onOwnedSystem.setString(2, currentUser);
+                        ResultSet systemOwned = onOwnedSystem.executeQuery();
+                        if(systemOwned.next()){
+                            PreparedStatement addToCollection = conn.prepareStatement("insert into " +
+                                    "collection_contains values (?, ?)");
+                            addToCollection.setInt(1, collection_id);
+                            addToCollection.setInt(2, vg_id);
+                            addToCollection.executeUpdate();
+                            System.out.println("Success, added " + gameName + " to " + collectionName);
+                        } else {
+                            while(true){
+                                System.out.println("WARNING: you do not own any systems that this game can run on." +
+                                        "\n Would you still like to add it? (y/n)");
+                                String response = scanner.nextLine();
+                                if(response.toLowerCase(Locale.ROOT).charAt(0) == 'y'){
+                                    PreparedStatement addToCollection = conn.prepareStatement("insert into collection_contains " +
+                                            "values (?, ?)");
+                                    addToCollection.setInt(1, collection_id);
+                                    addToCollection.setInt(2, vg_id);
+                                    addToCollection.executeUpdate();
+                                    System.out.println("Success, added " + gameName + " to " + collectionName);
+                                    break;
+                                } else if(response.toLowerCase(Locale.ROOT).charAt(0) == 'n'){
+                                    System.out.println("Ok, we won't add it!");
+                                    break;
+                                }
+                            }
+                        }
+                    } else{
+                        System.out.println("Sorry, that game is already in that collection");
+                    }
+
+                } else{
+                    System.out.println("Sorry, that game does not exist");
+                }
+                queryGameExists.close();
+            } else{
+                System.out.println("Sorry, that collection does not exist");
+            }
+            queryCollectionExists.close();
+        } catch (SQLException e){
+            System.out.println("We are sorry, something went wrong. Either that game or collection does not exist, or" +
+                    " an internal error occurred. Please see error output for more detail");
+            System.err.println(e.getMessage());
+        }
+    }
+
+    private void deleteFromCollection(List<String> args){
+        String[] names = parseAddDeleteToCollection(args);
+        String gameName = names[0];
+        String collectionName = names[1];
+        try{
+            PreparedStatement queryCollectionExists = conn.prepareStatement("select collection_id from collection " +
+                    "where username like ? and name like ?");
+            queryCollectionExists.setString(1, currentUser);
+            queryCollectionExists.setString(2, collectionName);
+            ResultSet res = queryCollectionExists.executeQuery();
+            if(res.next()) { //check if collection exists
+                int collection_id = res.getInt("collection_id");
+                PreparedStatement queryGameExists = conn.prepareStatement("select vg_id from video_game " +
+                        "where title like ?");
+                queryGameExists.setString(1, gameName);
+                res = queryGameExists.executeQuery();
+                if (res.next()) { //check if game exists
+                    int vg_id = res.getInt("vg_id");
+                    //if we get here, game and collection exist
+                    //must check if game is already in collection
+                    PreparedStatement checkDuplicate = conn.prepareStatement("(select * from collection_contains" +
+                            " where collection_id = ? and vg_id = ?)");
+                    checkDuplicate.setInt(1, collection_id);
+                    checkDuplicate.setInt(2, vg_id);
+                    ResultSet exists = checkDuplicate.executeQuery();
+                    if(exists.next()) { //if it is in the collection, remove it
+                        PreparedStatement deleteGame = conn.prepareStatement("delete from collection_contains " +
+                                "where collection_id = ? and vg_id = ?");
+                        deleteGame.setInt(1, collection_id);
+                        deleteGame.setInt(2, vg_id);
+                        deleteGame.executeUpdate();
+                        System.out.println("Successfully delete " + gameName + " from " + collectionName);
+                    } else {
+                        System.out.println("Sorry, " + gameName +" is not in " + collectionName);
+                    }
+                    checkDuplicate.close();
+                } else {
+                    System.out.println("Sorry, that game does not exist");
+                }
+                queryGameExists.close();
+            } else{
+                System.out.println("Sorry, you have no such collection");
+            }
+            queryCollectionExists.close();
+        } catch (SQLException e){
+            System.out.println("error");
+            System.err.println(e.getMessage());
+        }
+    }
+
+    private void modifyCollection(List<String> args){
+        String[] names = parseAddDeleteToCollection(args);
+        String oldName = names[0];
+        String newName = names[1];
+        try {
+            PreparedStatement queryCollectionExists = conn.prepareStatement("select collection_id from collection " +
+                    "where username like ? and name like ?");
+            queryCollectionExists.setString(1, currentUser);
+            queryCollectionExists.setString(2, oldName);
+            ResultSet res = queryCollectionExists.executeQuery();
+            if (res.next()) { //check if collection exists
+                int collection_id = res.getInt("collection_id");
+                PreparedStatement updateName = conn.prepareStatement("update collection set name = ? " +
+                        "where username = ? and collection_id = ?");
+                updateName.setString(1, newName);
+                updateName.setString(2, currentUser);
+                updateName.setInt(3, collection_id);
+                updateName.executeUpdate();
+                System.out.println("Successfully updated " + oldName + " to " + newName);
+                updateName.close();
+            } else{
+                System.out.println("Sorry, you have no such collection");
+            }
+            queryCollectionExists.close();
+        } catch (SQLException e){
+            System.out.println("Sorry, something went wrong");
+            System.err.println(e.getMessage());
+        }
+
+    }
+
+    private void deleteCollection(List<String> args){
+        StringBuilder name = new StringBuilder();
+        for(int i = 0; i < args.size(); i++){
+            name.append(args.get(i));
+            if(i < args.size()-1){
+                name.append(" ");
+            }
+        }
+        try {
+            PreparedStatement queryCollectionExists = conn.prepareStatement("select collection_id from collection " +
+                    "where username like ? and name like ?");
+            queryCollectionExists.setString(1, currentUser);
+            queryCollectionExists.setString(2, name.toString());
+            ResultSet res = queryCollectionExists.executeQuery();
+            if (res.next()) { //check if collection exists
+                int collection_id = res.getInt("collection_id");
+                System.out.println(collection_id);
+                PreparedStatement deleteCollection = conn.prepareStatement("delete from collection where name like ?");
+                deleteCollection.setString(1, name.toString());
+                PreparedStatement deleteCollectionContents = conn.prepareStatement("delete from collection_contains where collection_id = ?");
+                deleteCollectionContents.setInt(1, collection_id);
+                deleteCollection.executeUpdate();
+                deleteCollectionContents.executeUpdate();
+                System.out.println("Successfully deleted your collection " + name);
+            } else{
+                System.out.println("Sorry, you have no such collection");
+            }
+            queryCollectionExists.close();
+        } catch (SQLException e){
+            System.out.println("Sorry, something went wrong. please try again");
+            System.err.println(e.getMessage());
+        }
+    }
+
+    private String[] parseAddDeleteToCollection(List<String> args){
+        StringBuilder both = new StringBuilder();
+        for(int i = 0; i < args.size(); i++){
+            both.append(args.get(i));
+            if(i != args.size()-1){
+                both.append(" ");
+            }
+        }
+        String[] split = both.toString().split("] \\[");
+
+        split[0] = split[0].substring(1);
+        split[1] = split[1].substring(0, split[1].length()-1);
+        return split;
+    }
 
     private int getResultSetRowCount(ResultSet res) throws SQLException {
         int size = 0;
@@ -417,12 +822,36 @@ public class Application {
     }
 
     private void printResultSet(ResultSet res) throws SQLException{
-        while(res.next()){
-            for(int i = 1; i <= res.getMetaData().getColumnCount(); i++){
-                System.out.print(res.getString(i) + " ");
-            }
-            System.out.println();
+        ResultSetMetaData rsmd = res.getMetaData();
+        int columnsNumber = rsmd.getColumnCount();
+        int colWidth = 30; // this can be changed if we need to accommodate larger strings
+        int tableWidth = (columnsNumber * colWidth) + (columnsNumber + 1) + (2 * columnsNumber);
+
+        for (int i = 0; i < tableWidth; i++) { // print lines
+            System.out.print("-");
         }
+        System.out.println();
+        if (res.isBeforeFirst()) { // print column names
+            for (int i = 1; i <= columnsNumber; i++) {
+                System.out.printf("| %-" + colWidth + "s ", rsmd.getColumnName(i));
+            }
+            System.out.println("|");
+        }
+        for (int i = 0; i < tableWidth; i++) { // print lines
+            System.out.print("-");
+        }
+        System.out.println();
+
+        while (res.next()) { // print rows
+            for (int i = 1; i <= columnsNumber; i++) {
+                System.out.printf("| %-" + colWidth + "s ", res.getString(i));
+            }
+            System.out.println("|");
+        }
+        for (int i = 0; i < tableWidth; i++) { // print lines
+            System.out.print("-");
+        }
+        System.out.println();
     }
 
     private String getCurrentDateTime(){
@@ -430,4 +859,63 @@ public class Application {
         LocalDateTime now = LocalDateTime.now();
         return dtf.format(now);
     }
+
+    private int getIdFromTitle(String title){
+        int vg_id = 0;
+        try{
+            Statement st = this.conn.createStatement();
+            ResultSet res = st.executeQuery("select \"vg_id\" from \"video_game\" where \"title\" like '%" + title + "%'");
+            if(res.next()) {
+                vg_id = res.getInt("vg_id");
+            } else {
+                System.out.println("This game does not exist");
+            }
+            st.close();
+        }
+        catch (SQLException e){
+            System.out.println("We are sorry, something went wrong. Video game may not exist. Please see error output for more detail");
+            System.err.println(e.getMessage());
+            vg_id = 0; //returns zero on error
+        }
+
+        return vg_id;
+    }
+
+    private void rate_game(String game, int rating){
+        if(!(rating <= 5 && rating >= 1)){
+            System.out.println("Please enter a valid rating number 1-5.");
+        } else {
+            int vg_id = getIdFromTitle(game);
+            if(vg_id == 0){
+                System.out.println("Enter a valid video game.");
+            } else {
+                try {
+                    PreparedStatement st2 = conn.prepareStatement("select rating from rates where vg_id = ?" +
+                            "and username like ?");
+                    st2.setInt(1, vg_id);
+                    st2.setString(2, this.currentUser);
+                    ResultSet res = st2.executeQuery();
+                    if(res.next()){
+                        PreparedStatement st3 = conn.prepareStatement("update rates set rating = ?" +
+                                "where username = ? and vg_id = ?");
+                        st3.setInt(1, rating);
+                        st3.setString(2, this.currentUser);
+                        st3.setInt(3, vg_id);
+                        st3.executeUpdate();
+                    } else {
+                        PreparedStatement st4 = conn.prepareStatement("insert into rates values (?,?,?)");
+                        st4.setString(1, this.currentUser);
+                        st4.setInt(2, vg_id);
+                        st4.setInt(3, rating);
+                        st4.executeUpdate();
+                    }
+                    System.out.println("Game has been rated.");
+                } catch (SQLException e) {
+                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
+                    System.err.println(e.getMessage());
+                }
+            }
+        }
+    }
+
 }

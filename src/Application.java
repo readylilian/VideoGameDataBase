@@ -234,54 +234,75 @@ public class Application {
                 deleteCollection(cmdArgs.subList(1, cmdArgs.size()));
             }
         }
+
+        if (cmd.equals("play_game_random")) {
+            if (cmdArgs.size() < 2) {
+                System.out.print("Usage: play_game_random <collection name>");
+            } else {
+                try {
+                    List<String> col_name = cmdArgs.subList(1, cmdArgs.size());
+
+                    // get collection name as String!
+                    StringBuilder name = new StringBuilder();
+                    for (int i = 0; i < col_name.size(); i++) {
+                        name.append(col_name.get(i));
+                        if (i < col_name.size() - 1) {
+                            name.append(" ");
+                        }
+                    }
+
+                    String collection_name_string = name.toString();
+
+                    try {
+                        String vg_name_string = randomVideoGameFromCollection(collection_name_string);
+
+                        play_game(vg_name_string);
+
+                    } catch (SQLException e) {
+                        System.out.println(
+                                "Something went wrong! This collection might not" +
+                                        "exist, or an internal error has occurred. See error output for more detail");
+                        System.err.println(e.getMessage());
+                    }
+                }catch(NumberFormatException nfe) {
+                    System.out.println(
+                            "Usage: play_game_random <collection name>" +
+                                    " Please see error output for more detail");
+                    System.err.println(nfe.getMessage());
+
+                }
+            }
+        }
+
         if (cmd.equals("play_game")) {
             if (cmdArgs.size() < 2) {
-                System.out.print("Usage: play_game <video game title > \n OR \n" +
-                        "play_game random <collection title>");
+                System.out.print("Usage: play_game <video game title>");
             } else {
                 try {
                     List<String> vg_name = cmdArgs.subList(1, cmdArgs.size());
-                    // video game name as String! This is what is fed to play_game function!
-                    String vg_name_string = "";
-                    if (vg_name.equals("random")) {
-                        if (cmdArgs.size() < 3) {
-                            System.out.print(
-                                    "Usage: play_game <video game title > \n OR \n" +
-                                    "play_game random <collection title>");
-                        } else{
-                            List<String> collection_name = cmdArgs.subList(2,
-                                    cmdArgs.size());
-                            try {
-                                vg_name_string =
-                                        randomVideoGameFromCollection(collection_name);
-                            } catch (SQLException e) {
-                                System.out.println(
-                                        "Something went wrong! This collection might not" +
-                                        "exist, or an internal error has occurred. See error output for more detail");
-                                System.err.println(e.getMessage());
-                            }
+
+                    // get video game name as String! This is what is fed to play_game function!
+                    StringBuilder name = new StringBuilder();
+                    for (int i = 0; i < vg_name.size(); i++) {
+                        name.append(vg_name.get(i));
+                        if (i < vg_name.size() - 1) {
+                            name.append(" ");
                         }
                     }
-                    else{
-                        StringBuilder name = new StringBuilder();
-                        for (int i = 0; i < vg_name.size(); i++) {
-                            name.append(vg_name.get(i));
-                            if (i < vg_name.size() - 1) {
-                                name.append(" ");
-                            }
-                        }
-                        vg_name_string = name.toString();
-                    }
+
+                    String vg_name_string = name.toString();
+
                     play_game(vg_name_string);
+
                 } catch (NumberFormatException nfe) {
                     System.out.println(
-                            "Usage: play_game <video game title > \n OR \n play_game" +
-                            "random <collection title >" +
+                            "Usage: play_game <video game title>" +
                             " Please see error output for more detail");
                     System.err.println(nfe.getMessage());
                 }
             }
         }
+
         if(cmd.equals("rate_game")){
             if(cmdArgs.size() < 3){
                 System.out.println("Usage: rate_game <star rating: 1-5> <video game title>");
@@ -356,33 +377,34 @@ public class Application {
         }
     }
 
-    private String randomVideoGameFromCollection(List<String> collection_name) throws SQLException {
+    private String randomVideoGameFromCollection(String collection_name) throws SQLException {
         String vg_name = "";
         PreparedStatement query_collection_exists = conn.prepareStatement("select collection_id from collection " + "where username like ? and name like ?");
         query_collection_exists.setString(1, currentUser);
-        query_collection_exists.setString(2, collection_name.toString());
+        query_collection_exists.setString(2, collection_name);
         ResultSet res = query_collection_exists.executeQuery();
         if (res.next()) {
             String collection_id = res.getString(1); //retreive first column from result set (should be collection_id)?
             // count number of video games in the collection
-            PreparedStatement get_number_video_games_from_collection_query = conn.prepareStatement("select count * from collection_contains " + "where collection_id = ?");
-            get_number_video_games_from_collection_query.setString(1, collection_id);
+            PreparedStatement get_number_video_games_from_collection_query = conn.prepareStatement("select count(*) from collection_contains where collection_id = " + collection_id);
             res = get_number_video_games_from_collection_query.executeQuery();
+            res.next();
             int num_games_in_collection = res.getInt(1); //retreive first column from result set (should be collection_id)?
             // grab all videogames from collection
-            PreparedStatement video_games_from_collection_query = conn.prepareStatement("select vg_id from collection_contains " + "where collection_id = ?");
-            video_games_from_collection_query.setString(1, collection_id);
+            PreparedStatement video_games_from_collection_query = conn.prepareStatement("select vg_id from collection_contains " + "where collection_id = " + collection_id);
             res = video_games_from_collection_query.executeQuery();
             // select random;
             // generate random number within range of total video games in collection
+
             int range = ( num_games_in_collection - 1)  + 1;
             int randomNum = (int)((Math.random() * range) + 1);
             // grab vg_id at randomized column location
+            res.next();
             String random_vg_id_string = res.getString(randomNum);
             // get name of randomized video game.
-            PreparedStatement video_game_name_from_id = conn.prepareStatement("select title from video_game " + "where vg_id = ?");
-            video_game_name_from_id.setString(1, random_vg_id_string);
+            PreparedStatement video_game_name_from_id = conn.prepareStatement("select title from video_game where vg_id = " + random_vg_id_string);
             res = video_game_name_from_id.executeQuery();
+            res.next();
             vg_name = res.getString(1);
         }
         return vg_name;

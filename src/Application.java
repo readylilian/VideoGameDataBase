@@ -1,3 +1,4 @@
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -20,6 +21,7 @@ public class Application {
     ResultSet gameInfo;
     List<ResultSet> allGames = new ArrayList<>();
     String lastTitle = "";
+    StringBuilder search;
     private String login(){
         while(true){
             try{
@@ -146,7 +148,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_platform")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game <platform to search>");
+                System.out.println("Usage: search_game_by_platform <platform to search>");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 1);
@@ -154,7 +156,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_release_date")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game <release date to search>");
+                System.out.println("Usage: search_game_by_release_date <YYYY-MM-DD>");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 2);
@@ -162,7 +164,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_developer")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game <developer to search>");
+                System.out.println("Usage: search_game_by_developer <developer to search>");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 3);
@@ -170,7 +172,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_price")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game <price to search>");
+                System.out.println("Usage: search_game_by_price <price to search>");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 4);
@@ -178,7 +180,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_genre")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game <genre to search>");
+                System.out.println("Usage: search_game_by_genr <genre to search>");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 5);
@@ -229,11 +231,6 @@ public class Application {
         }
     }
 
-    //1 = Platform
-    //2 = Release date
-    //3 = Developers
-    //4 = Price
-    //5 = Genre
     private void searchGame(List<String> toSearch, int searchType)
     {
         try {
@@ -250,97 +247,102 @@ public class Application {
                         " WHERE VG.vg_id = ? AND plat.platform_id = vgplat.platform_id"
             );
 
+            search = new StringBuilder();
+            for (int i = 0; i < toSearch.size(); i++) {
+                search.append(toSearch.get(i));
+                if (i < toSearch.size() - 1) {
+                    search.append(" ");
+                }
+            }
+
             switch (searchType) {
                 //Title
                 case 0:
-                        StringBuilder search = new StringBuilder();
-                        for (int i = 0; i < toSearch.size(); i++) {
-                            search.append(toSearch.get(i));
-                            if (i < toSearch.size() - 1) {
-                                search.append(" ");
-                            }
-                        }
                         //Get the vg_id from the title
-                        PreparedStatement st = this.conn.prepareStatement(
-                                "select vg_id,title,esrb_rating from \"video_game\" where title like ?"
+                        st = this.conn.prepareStatement(
+                                "select vg_id from \"video_game\" where title like ?"
                         );
                         st.setString(1, "%" +search.toString() + "%");
-
-                        res = st.executeQuery();
-                        //If anything is returned, print it
-                        if(!res.wasNull())
-                        {
-                            System.out.println("Games that match your search:");
-                            System.out.printf("------------------------------------------------------------------------------------------" +
-                                    "---------------------------------------------------------------%n");
-                            System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
-                                    "Title", "Platforms", "Developers", "Publishers","Playtime","Age Rating", "Your Rating");
-                            //print out each game in a nice way
-                            while(res.next()) {
-                                //Set the vg_id
-                                gameInfoCall.setInt(1, res.getInt("vg_id"));
-                                printGameSearchResults(gameInfoCall.executeQuery());
-                            }
-                        }
-                        else
-                        {
-                            System.out.println("There are currently no games that match your search");
-                        }
-                        st.close();
                     break;
-
-            /*case 1:
-                try{
-
-                }
-                catch (SQLException e)
-                {
-                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
-                    System.err.println(e.getMessage());
-                }
+            //Platform
+            case 1:
+                    //Get the vg_id from the platform
+                    st = this.conn.prepareStatement(
+                            "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
+                                    "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
+                                    "\"platform\" as plat ON vgplat.platform_id = plat.platform_id " +
+                                    "where plat.name like ?"
+                    );
+                    st.setString(1, "%" +search.toString() + "%");
                 break;
+
+            //Release Date
             case 2:
-                try{
-
-                }
-                catch (SQLException e)
-                {
-                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
-                    System.err.println(e.getMessage());
-                }
+                //Get the vg_id from the release date
+                st = this.conn.prepareStatement(
+                        "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
+                                "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id"+
+                                " where CAST(vgplat.release_date AS DATE) = ?"
+                );
+                //st.setString(1, search.toString() + "%");
+                st.setDate(1, Date.valueOf(search.toString() + ""));
                 break;
+            //Developers
             case 3:
-                try{
-
-                }
-                catch (SQLException e)
-                {
-                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
-                    System.err.println(e.getMessage());
-                }
+            //Get the vg_id from the developer
+                    st = this.conn.prepareStatement(
+                            "select VG.vg_id from \"video_game\" as VG INNER JOIN" +
+                                    "\"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN" +
+                                    "\"creator\" as cdev ON cdev.creator_id = dev.creator_id" +
+                                    " WHERE cdev.name like ?"
+                    );
+                    st.setString(1, "%" +search.toString() + "%");
                 break;
+            //Price
             case 4:
-                try{
-
-                }
-                catch (SQLException e)
-                {
-                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
-                    System.err.println(e.getMessage());
-                }
+                //Get the vg_id from the price
+                st = this.conn.prepareStatement(
+                        "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
+                                "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id" +
+                                " where vgplat.price = ?"
+                );
+                st.setInt(1, Integer.parseInt(search.toString()));
                 break;
+            //Genre
             case 5:
-                try{
-
-                }
-                catch (SQLException e)
-                {
-                    System.out.println("We are sorry, something went wrong. Please see error output for more detail");
-                    System.err.println(e.getMessage());
-                }
-                break;*/
+                //Get the vg_id from the genre
+                st = this.conn.prepareStatement(
+                        "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
+                                " \"has_genre\" as genre ON VG.vg_id = genre.vg_id" +
+                                " where genre.genre_name LIKE ?"
+                );
+                st.setString(1, search.toString());
+                break;
             }
+
+            res = st.executeQuery();
+            //If anything is returned, print it
+            if(!res.wasNull())
+            {
+                System.out.println("Games that match your search:");
+                System.out.printf("------------------------------------------------------------------------------------------" +
+                        "---------------------------------------------------------------%n");
+                System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                        "Title", "Platforms", "Developers", "Publishers","Playtime","Age Rating", "Your Rating");
+                //print out each game in a nice way
+                while(res.next()) {
+                    //Set the vg_id
+                    gameInfoCall.setInt(1, res.getInt("vg_id"));
+                    printGameSearchResults(gameInfoCall.executeQuery());
+                }
+            }
+            else
+            {
+                System.out.println("There are currently no games that match your search");
+            }
+
             gameInfoCall.close();
+            st.close();
         }
         catch (SQLException e)
         {

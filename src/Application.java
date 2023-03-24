@@ -646,7 +646,7 @@ public class Application {
             PreparedStatement pst = conn.prepareStatement(
                         "SELECT c.name AS collection_name, COALESCE(COUNT(cc.vg_id), 0) AS number_of_video_games," +
                                 "CONCAT_WS(':', COALESCE(SUM(p.total_playtime) / 60, 0)," +
-                                    "SUM(p.total_playtime) % 60) AS total_play_time " +
+                                    "COALESCE(SUM(p.total_playtime) % 60), 0) AS total_play_time " +
                             "FROM COLLECTION c " +
                             "LEFT JOIN COLLECTION_CONTAINS cc ON c.collection_id = cc.collection_id " +
                             "LEFT JOIN PLAYS p ON cc.vg_id = p.vg_id AND c.username = p.username " +

@@ -566,6 +566,7 @@ public class Application {
                 }
             }
         }
+        lastTitle = "";
     }
     private void createCollection(List<String> nameList) {
         try{

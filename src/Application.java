@@ -139,7 +139,7 @@ public class Application {
         }
         if(cmd.equals("search_game")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game <game title to search>");
+                System.out.println("Usage: search_game [<game title to search>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 0);
@@ -147,7 +147,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_platform")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_platform <platform to search>");
+                System.out.println("Usage: search_game_by_platform [<platform to search>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 1);
@@ -155,7 +155,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_release_date")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_release_date <YYYY-MM-DD>");
+                System.out.println("Usage: search_game_by_release_date [<YYYY-MM-DD>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 2);
@@ -163,7 +163,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_developer")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_developer <developer to search>");
+                System.out.println("Usage: search_game_by_developer [<developer to search>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 3);
@@ -171,7 +171,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_price")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_price <price to search>");
+                System.out.println("Usage: search_game_by_price [<price to search>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 4);
@@ -179,7 +179,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_genre")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_genre <genre to search>");
+                System.out.println("Usage: search_game_by_genre [<genre to search>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 5);
@@ -366,9 +366,12 @@ public class Application {
 
     private void searchGame(List<String> toSearch, int searchType)
     {
+        String[] terms = parseAddDeleteToCollection(toSearch);
+        String searchTerm = terms[0];
+        String sortTerm = terms[1];
         try {
             //Used to get all needed info for print
-            PreparedStatement gameInfoCall = this.conn.prepareStatement(
+            PreparedStatement gameInfoCall; = this.conn.prepareStatement(
                 "SELECT DISTINCT  VG.title, plat.name, cdev.name, cpub.name, VG.esrb_rating, VG.vg_id, vgplat.release_date FROM" +
                         " \"video_game\" as VG INNER JOIN" +
                         " \"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN" +

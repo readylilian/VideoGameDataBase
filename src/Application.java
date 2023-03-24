@@ -365,7 +365,7 @@ public class Application {
         try {
             //Used to get all needed info for print
             PreparedStatement gameInfoCall = this.conn.prepareStatement(
-                "SELECT DISTINCT VG.title, plat.name, cdev.name, cpub.name, VG.esrb_rating, VG.vg_id FROM" +
+                "SELECT DISTINCT  VG.title, plat.name, cdev.name, cpub.name, VG.esrb_rating, VG.vg_id, vgplat.release_date FROM" +
                         " \"video_game\" as VG INNER JOIN" +
                         " \"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN" +
                         " \"creator\" as cdev ON cdev.creator_id = dev.creator_id INNER JOIN" +
@@ -373,7 +373,9 @@ public class Application {
                         " \"creator\" as cpub ON cpub.creator_id = pub.creator_id INNER JOIN" +
                         " \"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
                         " \"platform\" as plat ON plat.platform_id = vgplat.platform_id" +
-                        " WHERE VG.vg_id = ? AND plat.platform_id = vgplat.platform_id"
+                        " WHERE VG.vg_id = ? AND plat.platform_id = vgplat.platform_id" +
+                        " ORDER BY VG.title ASC, vgplat.release_date ASC"
+
             );
 
             search = new StringBuilder();

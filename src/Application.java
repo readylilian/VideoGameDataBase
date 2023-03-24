@@ -20,6 +20,7 @@ public class Application {
     ResultSet gameInfo;
     List<ResultSet> allGames = new ArrayList<>();
     String lastTitle = "";
+    Integer lastId = -1;
     StringBuilder search;
     private String login(){
         while(true){
@@ -139,7 +140,7 @@ public class Application {
         }
         if(cmd.equals("search_game")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game <game title to search>");
+                System.out.println("Usage: search_game [<game title to search>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 0);
@@ -147,7 +148,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_platform")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_platform <platform to search>");
+                System.out.println("Usage: search_game_by_platform [<platform to search>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 1);
@@ -155,7 +156,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_release_date")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_release_date <YYYY-MM-DD>");
+                System.out.println("Usage: search_game_by_release_date [<YYYY-MM-DD>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 2);
@@ -163,7 +164,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_developer")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_developer <developer to search>");
+                System.out.println("Usage: search_game_by_developer [<developer to search>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 3);
@@ -171,7 +172,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_price")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_price <price to search>");
+                System.out.println("Usage: search_game_by_price [<price to search>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 4);
@@ -179,7 +180,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_genre")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_genre <genre to search>");
+                System.out.println("Usage: search_game_by_genre [<genre to search>] [<a/d>_<sort_type>]");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 5);
@@ -366,36 +367,62 @@ public class Application {
 
     private void searchGame(List<String> toSearch, int searchType)
     {
+        String[] terms = parseAddDeleteToCollection(toSearch);
+        String search = terms[0];
+        String sortTerm = terms[1];
+        String searchTypeOrder = "";
+        String searchCall = "SELECT DISTINCT  VG.title, plat.name, cdev.name, cpub.name, VG.esrb_rating, VG.vg_id, " +
+                "vgplat.release_date, vgplat.price, genre.genre_name  FROM" +
+                " \"video_game\" as VG INNER JOIN" +
+                " \"has_genre\" as genre ON VG.vg_id = genre.vg_id INNER JOIN" +
+                " \"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN" +
+                " \"creator\" as cdev ON cdev.creator_id = dev.creator_id INNER JOIN" +
+                " \"publishes\" as pub ON VG.vg_id = pub.vg_id INNER JOIN" +
+                " \"creator\" as cpub ON cpub.creator_id = pub.creator_id INNER JOIN" +
+                " \"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
+                " \"platform\" as plat ON plat.platform_id = vgplat.platform_id" +
+                " WHERE VG.vg_id = ? AND plat.platform_id = vgplat.platform_id ";
         try {
-            //Used to get all needed info for print
-            PreparedStatement gameInfoCall = this.conn.prepareStatement(
-                "SELECT DISTINCT  VG.title, plat.name, cdev.name, cpub.name, VG.esrb_rating, VG.vg_id, vgplat.release_date FROM" +
-                        " \"video_game\" as VG INNER JOIN" +
-                        " \"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN" +
-                        " \"creator\" as cdev ON cdev.creator_id = dev.creator_id INNER JOIN" +
-                        " \"publishes\" as pub ON VG.vg_id = pub.vg_id INNER JOIN" +
-                        " \"creator\" as cpub ON cpub.creator_id = pub.creator_id INNER JOIN" +
-                        " \"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
-                        " \"platform\" as plat ON plat.platform_id = vgplat.platform_id" +
-                        " WHERE VG.vg_id = ? AND plat.platform_id = vgplat.platform_id" +
-                        " ORDER BY VG.title ASC, vgplat.release_date ASC"
-
-            );
-
-            search = new StringBuilder();
-            for (int i = 0; i < toSearch.size(); i++) {
-                search.append(toSearch.get(i));
-                if (i < toSearch.size() - 1) {
-                    search.append(" ");
-                }
+            switch (sortTerm) {
+                //Default
+                case "":
+                    searchCall += " ORDER BY VG.title ASC";
+                    break;
+                case "a_title":
+                    searchCall += " ORDER BY VG.title ASC";
+                    break;
+                case "d_title":
+                    searchCall += " ORDER BY VG.title DESC";
+                    break;
+                case "a_price":
+                    searchCall += " ORDER BY vgplat.price ASC";
+                    break;
+                case "d_price":
+                    searchCall += " ORDER BY vgplat.price DESC";
+                    break;
+                case "a_genre":
+                    searchCall += " ORDER BY genre.genre_name ASC";
+                    break;
+                case "d_genre":
+                    searchCall += " ORDER BY genre.genre_name DESC";
+                    break;
+                case "a_year":
+                    searchCall += " ORDER BY vgplat.release_date ASC";
+                    break;
+                case "d_year":
+                    searchCall += " ORDER BY vgplat.release_date DESC";
+                    break;
             }
+            PreparedStatement gameInfoCall = this.conn.prepareStatement(searchCall);
 
             switch (searchType) {
                 //Title
                 case 0:
                         //Get the vg_id from the title
                         st = this.conn.prepareStatement(
-                                "select vg_id from \"video_game\" where title like ?"
+                                "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
+                                        "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id" +
+                                        " where title like ? ORDER BY VG.title ASC, vgplat.release_date ASC"
                         );
                         st.setString(1, "%" +search.toString() + "%");
                     break;
@@ -406,7 +433,7 @@ public class Application {
                             "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
                                     "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
                                     "\"platform\" as plat ON vgplat.platform_id = plat.platform_id " +
-                                    "where plat.name like ?"
+                                    "where plat.name like ? ORDER BY VG.title ASC, vgplat.release_date ASC"
                     );
                     st.setString(1, "%" +search.toString() + "%");
                 break;
@@ -417,7 +444,7 @@ public class Application {
                 st = this.conn.prepareStatement(
                         "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
                                 "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id"+
-                                " where CAST(vgplat.release_date AS DATE) = ?"
+                                " where CAST(vgplat.release_date AS DATE) = ? ORDER BY VG.title ASC, vgplat.release_date ASC"
                 );
                 //st.setString(1, search.toString() + "%");
                 st.setDate(1, Date.valueOf(search.toString() + ""));
@@ -427,9 +454,10 @@ public class Application {
             //Get the vg_id from the developer
                     st = this.conn.prepareStatement(
                             "select VG.vg_id from \"video_game\" as VG INNER JOIN" +
+                                    "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
                                     "\"develops\" as dev ON VG.vg_id = dev.vg_id INNER JOIN" +
                                     "\"creator\" as cdev ON cdev.creator_id = dev.creator_id" +
-                                    " WHERE cdev.name like ?"
+                                    " WHERE cdev.name like ? ORDER BY VG.title ASC, vgplat.release_date ASC"
                     );
                     st.setString(1, "%" +search.toString() + "%");
                 break;
@@ -439,7 +467,7 @@ public class Application {
                 st = this.conn.prepareStatement(
                         "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
                                 "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id" +
-                                " where vgplat.price = ?"
+                                " where vgplat.price = ? ORDER BY VG.title ASC, vgplat.release_date ASC"
                 );
                 st.setInt(1, Integer.parseInt(search.toString()));
                 break;
@@ -448,8 +476,9 @@ public class Application {
                 //Get the vg_id from the genre
                 st = this.conn.prepareStatement(
                         "select VG.vg_id from \"video_game\" as VG INNER JOIN " +
+                                "\"video_game_on/has_platform\" as vgplat ON VG.vg_id = vgplat.vg_id INNER JOIN" +
                                 " \"has_genre\" as genre ON VG.vg_id = genre.vg_id" +
-                                " where genre.genre_name LIKE ?"
+                                " where genre.genre_name LIKE ? ORDER BY VG.title ASC, vgplat.release_date ASC"
                 );
                 st.setString(1, search.toString());
                 break;
@@ -467,15 +496,19 @@ public class Application {
                 //print out each game in a nice way
                 while(res.next()) {
                     //Set the vg_id
-                    gameInfoCall.setInt(1, res.getInt("vg_id"));
-                    printGameSearchResults(gameInfoCall.executeQuery());
+                    if(lastId != res.getInt("vg_id"))
+                    {
+                        gameInfoCall.setInt(1, res.getInt("vg_id"));
+                        printGameSearchResults(gameInfoCall.executeQuery());
+                        lastId = res.getInt("vg_id");
+                    }
                 }
             }
             else
             {
                 System.out.println("There are currently no games that match your search");
             }
-
+            lastId = -1;
             gameInfoCall.close();
             st.close();
         }
@@ -619,6 +652,7 @@ public class Application {
                             "LEFT JOIN PLAYS p ON cc.vg_id = p.vg_id AND c.username = p.username " +
                             "WHERE c.username like ? " +
                             "GROUP BY c.collection_id, c.name ORDER BY c.name ASC;",
+
                     ResultSet.TYPE_SCROLL_SENSITIVE,
                     ResultSet.CONCUR_UPDATABLE);
             pst.setString(1, this.currentUser);

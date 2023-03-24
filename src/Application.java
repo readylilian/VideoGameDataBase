@@ -262,7 +262,7 @@ public class Application {
                         System.out.println(
                                 "Something went wrong! This collection might not" +
                                         "exist, or an internal error has occurred. See error output for more detail");
-                        System.err.println(e.getMessage());
+                        if(e.getMessage() != null){System.err.println(e.getMessage());}
                     }
                 }catch(NumberFormatException nfe) {
                     System.out.println(
@@ -406,6 +406,9 @@ public class Application {
             res = video_game_name_from_id.executeQuery();
             res.next();
             vg_name = res.getString(1);
+        }
+        else{
+            throw new SQLException();
         }
         return vg_name;
     }

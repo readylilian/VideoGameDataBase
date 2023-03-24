@@ -1,9 +1,7 @@
+import java.sql.Date;
 import java.text.SimpleDateFormat;
 import javax.xml.transform.Result;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Scanner;
+import java.util.*;
 import java.sql.*;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
@@ -181,7 +179,7 @@ public class Application {
         }
         if(cmd.equals("search_game_by_genre")){
             if(cmdArgs.size() < 2){
-                System.out.println("Usage: search_game_by_genr <genre to search>");
+                System.out.println("Usage: search_game_by_genre <genre to search>");
             }
             else{
                 searchGame(cmdArgs.subList(1, cmdArgs.size()), 5);
@@ -272,7 +270,13 @@ public class Application {
                     modify_collection [<old colllection name>] [<new collection name>]
                     delete_collection <collection name>
                     rate_game <star rating: 1-5> <video game title>
-                    help - see this message again""");
+                    help - see this message again
+                    search_game <game title to search>
+                    search_game_by_platform <platform to search>
+                    search_game_by_release_date <YYYY-MM-DD>
+                    search_game_by_developer <developer to search>
+                    search_game_by_price <price to search>
+                    search_game_by_genre <genre to search>""");
         }
         return true;
     }
@@ -483,7 +487,7 @@ public class Application {
 
     }
     private void printGameSearchResults(ResultSet res) throws SQLException{
-
+        HashSet<String> seen_info = new HashSet<>();
         while(res.next()){
 
             //Format the initial strings
@@ -528,13 +532,38 @@ public class Application {
                 playCheck.close();
                 reviewCheck.close();
                 lastTitle = res.getString(1);
+                seen_info.add(res.getString(2));
+                seen_info.add(res.getString(3));
+                seen_info.add(res.getString(4));
+
             }
             //Otherwise print out items that can change for every row
             else
             {
-                System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
-                        "", res.getString(2), res.getString(3),
-                        res.getString(4), "", "", "");
+                if(!seen_info.contains(res.getString(2)) && !seen_info.contains(res.getString(3)) && !seen_info.contains(res.getString(4))){
+                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                            "", res.getString(2), res.getString(3),
+                            res.getString(4), "", "", "");
+//                    System.out.println(seen_info);
+                    seen_info.add(res.getString(2));
+                    seen_info.add(res.getString(3));
+                    seen_info.add(res.getString(4));
+                } else if(!seen_info.contains(res.getString(2))){
+                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                            "", res.getString(2), "",
+                            "", "", "", "");
+                    seen_info.add(res.getString(2));
+                } else if(!seen_info.contains(res.getString(3))){
+                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                            "", "", res.getString(3),
+                            "", "", "", "");
+                    seen_info.add(res.getString(3));
+                } else if(!seen_info.contains(res.getString(4))){
+                    System.out.printf("| %-40s | %-20s | %-20s | %-20s | %-10s | %-10s | %-11s |%n",
+                            "", "", "",
+                            res.getString(4), "", "", "");
+                    seen_info.add(res.getString(4));
+                }
             }
         }
     }

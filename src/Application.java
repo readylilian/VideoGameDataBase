@@ -618,7 +618,7 @@ public class Application {
                             "LEFT JOIN COLLECTION_CONTAINS cc ON c.collection_id = cc.collection_id " +
                             "LEFT JOIN PLAYS p ON cc.vg_id = p.vg_id AND c.username = p.username " +
                             "WHERE c.username like ? " +
-                            "GROUP BY c.collection_id, c.name;",
+                            "GROUP BY c.collection_id, c.name ORDER BY c.name ASC;",
                     ResultSet.TYPE_SCROLL_SENSITIVE,
                     ResultSet.CONCUR_UPDATABLE);
             pst.setString(1, this.currentUser);

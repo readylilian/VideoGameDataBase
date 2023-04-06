@@ -1059,7 +1059,7 @@ public class Application {
                 ResultSet topGames = topPlayed.executeQuery();
                 if(topGames.next()){
                     System.out.println("Your top played games:");
-                    res.first();
+                    topGames.beforeFirst();
                     printResultSet(topGames);
                 } else {
                     System.out.println("You haven't played any games");
@@ -1070,26 +1070,39 @@ public class Application {
                 PreparedStatement topRated = conn.prepareStatement("select title, rating from " +
                         "rates natural join video_game " +
                         "where rates.username = ? " +
-                        "ORDER BY rates.rating DESC limit 10");
+                        "ORDER BY rates.rating DESC limit 10",
+                        ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
                 topRated.setString(1, currentUser);
                 ResultSet topGames = topRated.executeQuery();
-                System.out.println("Your top rated games:");
-                printResultSet(topGames);
+                if(topGames.next()){
+                    topGames.beforeFirst();
+                    System.out.println("Your top rated games:");
+                    printResultSet(topGames);
+                } else{
+                    System.out.println("You haven't rated any games");
+                }
                 topRated.close();
             }
             else{
                 PreparedStatement topRatedThenPlayed = conn.prepareStatement("select title, rating, " +
                         "sum(total_playtime) as \"total playtime\"" +
-                        "from rates inner join plays on rates.username = plays.username and rates.vg_id = plays.vg_id" +
-                        "inner join video_game on plays.vg_id = video_game.vg_id" +
-                        "where rates.username = ? and plays.username = ?" +
-                        "group by rating, title" +
-                        "order by rates.rating desc, sum(plays.total_playtime) desc limit 10");
+                        " from rates inner join plays on rates.username = plays.username and rates.vg_id = plays.vg_id " +
+                        "inner join video_game on plays.vg_id = video_game.vg_id " +
+                        "where rates.username = ? and plays.username = ? " +
+                        "group by rating, title " +
+                        "order by rates.rating desc, sum(plays.total_playtime) desc limit 10",
+                        ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
                 topRatedThenPlayed.setString(1, currentUser);
                 topRatedThenPlayed.setString(2, currentUser);
                 ResultSet topGames = topRatedThenPlayed.executeQuery();
-                System.out.println("Your top played games that you have rated in order of rating, then playtime:");
-                printResultSet(topGames);
+                if(topGames.next()){
+                    topGames.beforeFirst();
+                    System.out.println("Your top played games that you have rated in order of rating, then playtime:");
+                    printResultSet(topGames);
+                } else {
+                    System.out.println("You have no games that you have both played and rated");
+                }
+
                 topRatedThenPlayed.close();
             }
         } catch(SQLException e){

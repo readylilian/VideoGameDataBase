@@ -327,6 +327,16 @@ public class Application {
                 }
             }
         }
+
+        if(cmd.equals("profile")){
+            if(cmdArgs.size() != 2){
+                System.out.println("Usage: profile <sort type: either playtime, rating, or both>");
+            }
+            else{
+                view_profile(cmdArgs.get(1));
+            }
+        }
+
         if(cmd.toLowerCase(Locale.ROOT).equals("help")){
             System.out.println("""
                     Here are the commands you can use:
@@ -993,6 +1003,113 @@ public class Application {
             System.out.println("Sorry, something went wrong. please try again");
             System.err.println(e.getMessage());
         }
+    }
+
+    private void view_profile(String sortType){
+        if(!(sortType.equals("playtime") || sortType.equals("rating") || sortType.equals("both"))){
+            System.out.println("Usage: profile <sort type: either playtime, rating, or both>");
+            return;
+        }
+        try{
+            //no matter what they want to sort by, we always tell the how many collections, follower num, and follow num
+            PreparedStatement collectionNumSt =
+                    conn.prepareStatement("select count(name) from collection where username like ?");
+            collectionNumSt.setString(1, currentUser);
+            ResultSet res = collectionNumSt.executeQuery();
+            if(res.next()){
+                int numCollections = res.getInt("count");
+                System.out.println("You have " + numCollections +" collections");
+            } else{
+                System.out.println("You have 0 collections");
+            }
+            collectionNumSt.close();
+
+            PreparedStatement followersSt = conn.prepareStatement("select count(fid) from friends_with where fid like ?");
+            followersSt.setString(1, currentUser);
+            ResultSet res2 = followersSt.executeQuery();
+            if(res2.next()){
+                int numFollowers = res2.getInt("count");
+                System.out.println("You have " + numFollowers + " followers");
+            } else {
+                System.out.println("You have 0 followers");
+            }
+            followersSt.close();
+
+            PreparedStatement followSt = conn.prepareStatement("select count(uid) from friends_with where uid like ?");
+            followSt.setString(1, currentUser);
+            ResultSet res3 = followSt.executeQuery();
+            if(res3.next()){
+                int numFollow = res3.getInt("count");
+                System.out.println("You follow " + numFollow +" users");
+            } else{
+                System.out.println("You follow 0 users");
+            }
+            followersSt.close();
+
+            //TODO all of the sort options
+            if(sortType.equals("playtime")){
+                PreparedStatement topPlayed = conn.prepareStatement("select title, sum(total_playtime) " +
+                        "as \"total playtime\" from " +
+                        "plays natural join video_game " +
+                        "where plays.username = ? " +
+                        "group by title " +
+                        "ORDER BY sum(plays.total_playtime) DESC limit 10",
+                        ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+                topPlayed.setString(1, currentUser);
+                ResultSet topGames = topPlayed.executeQuery();
+                if(topGames.next()){
+                    System.out.println("Your top played games:");
+                    topGames.beforeFirst();
+                    printResultSet(topGames);
+                } else {
+                    System.out.println("You haven't played any games");
+                }
+                topPlayed.close();
+            }
+            else if(sortType.equals("rating")){
+                PreparedStatement topRated = conn.prepareStatement("select title, rating from " +
+                        "rates natural join video_game " +
+                        "where rates.username = ? " +
+                        "ORDER BY rates.rating DESC limit 10",
+                        ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+                topRated.setString(1, currentUser);
+                ResultSet topGames = topRated.executeQuery();
+                if(topGames.next()){
+                    topGames.beforeFirst();
+                    System.out.println("Your top rated games:");
+                    printResultSet(topGames);
+                } else{
+                    System.out.println("You haven't rated any games");
+                }
+                topRated.close();
+            }
+            else{
+                PreparedStatement topRatedThenPlayed = conn.prepareStatement("select title, rating, " +
+                        "sum(total_playtime) as \"total playtime\"" +
+                        " from rates inner join plays on rates.username = plays.username and rates.vg_id = plays.vg_id " +
+                        "inner join video_game on plays.vg_id = video_game.vg_id " +
+                        "where rates.username = ? and plays.username = ? " +
+                        "group by rating, title " +
+                        "order by rates.rating desc, sum(plays.total_playtime) desc limit 10",
+                        ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+                topRatedThenPlayed.setString(1, currentUser);
+                topRatedThenPlayed.setString(2, currentUser);
+                ResultSet topGames = topRatedThenPlayed.executeQuery();
+                if(topGames.next()){
+                    topGames.beforeFirst();
+                    System.out.println("Your top played games that you have rated in order of rating, then playtime:");
+                    printResultSet(topGames);
+                } else {
+                    System.out.println("You have no games that you have both played and rated");
+                }
+
+                topRatedThenPlayed.close();
+            }
+        } catch(SQLException e){
+            System.out.println("Sorry, something went wrong. Please Try again.");
+            System.err.println(e.getMessage());
+        }
+
     }
 
     private String[] parseAddDeleteToCollection(List<String> args){

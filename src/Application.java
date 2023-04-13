@@ -1134,7 +1134,7 @@ public class Application {
                 LocalDateTime cutoff = LocalDateTime.now().minusDays(90);
                 DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss");
                 ninetyDays = dtf.format(cutoff);
-                st.setString(1, ninetyDays);
+                st.setTimestamp(1, Timestamp.valueOf(ninetyDays));
                 ResultSet res = st.executeQuery();
                 printResultSet(res);
             } catch (SQLException e) {

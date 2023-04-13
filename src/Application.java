@@ -337,6 +337,15 @@ public class Application {
             }
         }
 
+        if(cmd.equals("rec")){
+            if(cmdArgs.size() != 2){
+                System.out.println("Usage: rec <type: either month, friend, 90, or history>");
+            }
+            else{
+                recommend(cmdArgs.get(1));
+            }
+        }
+
         if(cmd.toLowerCase(Locale.ROOT).equals("help")){
             System.out.println("""
                     Here are the commands you can use:
@@ -1110,6 +1119,28 @@ public class Application {
             System.err.println(e.getMessage());
         }
 
+    }
+
+    private void recommend(String recType){
+        if(recType.equals("90")){
+            System.out.println("The top 20 games of the last 90 days:");
+            try {
+                PreparedStatement st = conn.prepareStatement("select title, sum(total_playtime) " +
+                        "as \"total_playtime\" from " +
+                        "plays natural join video_game vg " +
+                        "where plays.date_played >= ? " +
+                        "group by title order by sum(total_playtime) DESC limit 20");
+                String ninetyDays = "";
+                LocalDateTime cutoff = LocalDateTime.now().minusDays(90);
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss");
+                ninetyDays = dtf.format(cutoff);
+                st.setString(1, ninetyDays);
+                ResultSet res = st.executeQuery();
+                printResultSet(res);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private String[] parseAddDeleteToCollection(List<String> args){

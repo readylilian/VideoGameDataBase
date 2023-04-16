@@ -1151,14 +1151,32 @@ public class Application {
                         "where EXTRACT(Month from vgplatt.release_date) = ? " +
                         "and extract(year from  vgplatt.release_date) = ? " +
                         "group by title " +
-                        "order by sum(total_playtime) " +
-                        "DESC limit 5;");
+                        "order by sum(total_playtime) DESC " +
+                        "limit 5;");
                 int month = LocalDateTime.now().getMonthValue();
                 int year = LocalDateTime.now().getYear();
                 st.setInt(1, month);
 //                st.setInt(1, 4);
 //                st.setInt(2, 1959);
                 st.setInt(2, year);
+                ResultSet res = st.executeQuery();
+                printResultSet(res);
+                st.close();
+            } catch (SQLException e){
+                e.printStackTrace();
+            }
+        }
+        if(recType.equals("friend")){
+            System.out.println("The top 20 games among your friends:");
+            try{
+                PreparedStatement st = conn.prepareStatement("select title, sum(total_playtime) " +
+                        "as \"total_playtime\" " +
+                        "from plays natural join video_game vg " +
+                        "where plays.username in (select fw.fid from friends_with as fw where uid = ?) " +
+                        "group by title " +
+                        "order by sum(total_playtime) DESC " +
+                        "limit 20;");
+                st.setString(1, currentUser);
                 ResultSet res = st.executeQuery();
                 printResultSet(res);
                 st.close();

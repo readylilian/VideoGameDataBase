@@ -394,9 +394,6 @@ public class Application {
                     search_game_by_price <price to search>
                     search_game_by_genre <genre to search>""");
         }
-        if (cmd.equals("hash")) {
-            System.out.println(hashPass(cmdArgs.get(1), cmdArgs.get(2)));
-        }
         return true;
     }
 

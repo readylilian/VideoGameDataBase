@@ -1,3 +1,7 @@
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.sql.Date;
 import java.text.SimpleDateFormat;
 import javax.xml.transform.Result;
@@ -46,7 +50,7 @@ public class Application {
                     //st must be updatable if you must use it to update a table
                     Statement st = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
                     ResultSet res = st.executeQuery("select * from \"user\" where \"username\" like "
-                            + "'" + loginInfo.get(0) + "'" + " and \"password\" like " + "'" + loginInfo.get(1) + "'");
+                            + "'" + loginInfo.get(0) + "'" + " and \"password\" like " + "'" + hashPass(loginInfo.get(0), loginInfo.get(1)) + "'");
                     int rowCount = getResultSetRowCount(res);
                     res.first(); //reset the result iterator to the first row
                     if(rowCount == 1){
@@ -70,6 +74,48 @@ public class Application {
 
     }
 
+    private void updatePass() throws SQLException {
+
+            Statement statement = conn.createStatement();
+            ResultSet allUsers = statement.executeQuery("select username, password from \"user\"");
+            while (allUsers.next()) {
+                try {
+                    PreparedStatement prep = conn.prepareStatement("update \"user\" set password = ? where username = ?");
+                    prep.setString(1, hashPass(allUsers.getString("username"), allUsers.getString("password")));
+                    prep.setString(2, allUsers.getString("username"));
+                    prep.executeQuery();
+                    prep.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+    }
+
+    private String hashPass(String username, String password) {
+        String result = "";
+        try {
+//            SecureRandom random = new SecureRandom(username.getBytes());
+            byte[] saltBytes = new byte[16];
+//            random.nextBytes(saltBytes);
+            MessageDigest md = null;
+            md = MessageDigest.getInstance("SHA-512");
+            md.update(saltBytes);
+            byte[] hashedPassword = md.digest((password + username).getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (Byte b: hashedPassword) {
+                sb.append(b);
+            }
+            result = sb.toString();
+            return result;
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    
+
     private String createAccount(){
         while(true) {
             System.out.println("Please enter a username, password,  email, first name, and last name separated by spaces");
@@ -78,7 +124,7 @@ public class Application {
                 System.out.println("Sorry, please try again");
             } else {
                 try (Statement st = conn.createStatement()) {
-                    st.executeUpdate("insert into \"user\" values('" + accountInfo.get(0) + "', '" + accountInfo.get(1) + "', '"
+                    st.executeUpdate("insert into \"user\" values('" + accountInfo.get(0) + "', '" + hashPass(accountInfo.get(0), accountInfo.get(1)) + "', '"
                             + accountInfo.get(2) + "', '" + getCurrentDateTime() + "', '" + getCurrentDateTime() + "', '" +
                             accountInfo.get(3) + "', '" + accountInfo.get(4) + "')");
                     return accountInfo.get(0);

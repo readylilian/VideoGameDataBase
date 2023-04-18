@@ -1184,6 +1184,14 @@ public class Application {
                 e.printStackTrace();
             }
         }
+        if(recType.equals("history")){
+            System.out.println("The top 10 recommended games based on games you like");
+            try{
+                PreparedStatement st = conn.prepareStatement("");
+            } catch (SQLException e){
+                e.printStackTrace();
+            }
+        }
     }
 
     private String[] parseAddDeleteToCollection(List<String> args){

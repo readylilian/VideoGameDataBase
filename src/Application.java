@@ -1219,27 +1219,68 @@ public class Application {
                         "WHERE genre_name = ?");
                 usersWithSameTopGenre.setString(1, genre);
                 ResultSet usersRes = usersWithSameTopGenre.executeQuery();
-                HashMap<String, Integer> topGamesInGenre = new HashMap<>();
+                class playtimeObj implements Comparable<playtimeObj>{
+                    int playtime;
+                    String name;
+                    playtimeObj(int playtime, String name){
+                        this.playtime = playtime;
+                        this.name = name;
+                    }
+
+                    public void setPlaytime(int playtime) {
+                        this.playtime = playtime;
+                    }
+
+                    public int getPlaytime() {
+                        return playtime;
+                    }
+
+                    @Override
+                    public boolean equals(Object o){
+                        if(o instanceof playtimeObj){
+                            playtimeObj op = (playtimeObj) o;
+                            return this.name.equals(op.name);
+                        }
+                        return false;
+                    }
+
+                    @Override
+                    public int hashCode(){
+                        return this.name.hashCode();
+                    }
+
+                    @Override
+                    public int compareTo(playtimeObj o) {
+                        if(this.playtime == o.playtime){
+                            return this.name.compareTo(o.name);
+                        }
+                        return this.playtime-o.playtime;
+                    }
+                }
+                TreeMap<playtimeObj, Integer> topGamesInGenre = new TreeMap<>();
                 while (usersRes.next()) {
                     String user = usersRes.getString("username");
-                    PreparedStatement usersTopGenreGame = conn.prepareStatement("SELECT p.username, p.vg_id, g.genre_name, SUM(p.total_playtime) AS playtime\n" +
-                            "FROM plays p\n" +
-                            "JOIN has_genre g ON p.vg_id = g.vg_id\n" +
-                            "WHERE p.username = ? AND g.genre_name = ?\n" +
-                            "GROUP BY p.username, p.vg_id, g.genre_name\n" +
-                            "ORDER BY playtime DESC\n" +
-                            "LIMIT 1;");
+                    PreparedStatement usersTopGenreGame = conn.prepareStatement("SELECT p.username, vg.title, g.genre_name, SUM(p.total_playtime) AS playtime " +
+                            "FROM plays p natural join has_genre g natural join video_game vg " +
+                            "WHERE p.username = ? AND g.genre_name = ? " +
+                            "GROUP BY p.username, vg.title, g.genre_name " +
+                            "ORDER BY playtime " +
+                            "DESC LIMIT 1;");
                     usersTopGenreGame.setString(1, user);
                     usersTopGenreGame.setString(2, genre);
                     ResultSet topGameRes = usersTopGenreGame.executeQuery();
                     String vg_id = topGameRes.getString("vg_id");
-                    Integer playtime = Integer.parseInt(topGameRes.getString("playtime"));
-                    if (topGamesInGenre.containsKey(vg_id)) {
+                    String vg_title = topGameRes.getString("title");
+                    int playtime = topGameRes.getInt("playtime");
+                    playtimeObj obj = new playtimeObj(playtime, vg_title);
+                    if (topGamesInGenre.containsKey(obj)) {
                         Integer incrementedPlaytime = topGamesInGenre.get(vg_id) + playtime;
                         topGamesInGenre.put(vg_id, incrementedPlaytime);
                     } else {
                         topGamesInGenre.put(vg_id, playtime);
                     }
+
+
                 }
             } catch (SQLException e){
                 e.printStackTrace();

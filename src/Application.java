@@ -383,6 +383,15 @@ public class Application {
             }
         }
 
+        if(cmd.equals("rec")){
+            if(cmdArgs.size() != 2){
+                System.out.println("Usage: rec <type: either month, friend, 90, or history>");
+            }
+            else{
+                recommend(cmdArgs.get(1));
+            }
+        }
+
         if(cmd.toLowerCase(Locale.ROOT).equals("help")){
             System.out.println("""
                     Here are the commands you can use:
@@ -1154,6 +1163,199 @@ public class Application {
         } catch(SQLException e){
             System.out.println("Sorry, something went wrong. Please Try again.");
             System.err.println(e.getMessage());
+        }
+
+    }
+
+    private void recommend(String recType){
+        if(recType.equals("90")){
+            System.out.println("The top 20 games of the last 90 days:");
+            try {
+                PreparedStatement st = conn.prepareStatement("select title, sum(total_playtime) " +
+                        "as \"total_playtime\" from " +
+                        "plays natural join video_game vg " +
+                        "where plays.date_played >= ? " +
+                        "group by title order by sum(total_playtime) DESC limit 20");
+                String ninetyDays = "";
+                LocalDateTime cutoff = LocalDateTime.now().minusDays(90);
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss");
+                ninetyDays = dtf.format(cutoff);
+                st.setTimestamp(1, Timestamp.valueOf(ninetyDays));
+                ResultSet res = st.executeQuery();
+                printResultSet(res);
+                st.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        if(recType.equals("month")){
+            System.out.println("The top 5 releases this month:");
+            try{
+                PreparedStatement st = conn.prepareStatement("select title, " +
+                        "sum(total_playtime) as \"total_playtime\" " +
+                        "from plays natural join video_game vg natural join \"video_game_on/has_platform\" as vgplatt " +
+                        "where EXTRACT(Month from vgplatt.release_date) = ? " +
+                        "and extract(year from  vgplatt.release_date) = ? " +
+                        "group by title " +
+                        "order by sum(total_playtime) DESC " +
+                        "limit 5;");
+                int month = LocalDateTime.now().getMonthValue();
+                int year = LocalDateTime.now().getYear();
+                st.setInt(1, month);
+//                st.setInt(1, 4);
+//                st.setInt(2, 1959);
+                st.setInt(2, year);
+                ResultSet res = st.executeQuery();
+                printResultSet(res);
+                st.close();
+            } catch (SQLException e){
+                e.printStackTrace();
+            }
+        }
+        if(recType.equals("friend")){
+            System.out.println("The top 20 games among your friends:");
+            try{
+                PreparedStatement st = conn.prepareStatement("select title, sum(total_playtime) " +
+                        "as \"total_playtime\" " +
+                        "from plays natural join video_game vg " +
+                        "where plays.username in (select fw.fid from friends_with as fw where uid = ?) " +
+                        "group by title " +
+                        "order by sum(total_playtime) DESC " +
+                        "limit 20;");
+                st.setString(1, currentUser);
+                ResultSet res = st.executeQuery();
+                printResultSet(res);
+                st.close();
+            } catch (SQLException e){
+                e.printStackTrace();
+            }
+        }
+        if(recType.equals("history")){
+            try {
+                PreparedStatement topGenre = conn.prepareStatement("SELECT g.genre_name\n" +
+                        "    FROM plays p\n" +
+                        "    JOIN has_genre g ON p.vg_id = g.vg_id\n" +
+                        "    WHERE p.username = ?\n" +
+                        "    GROUP BY g.genre_name\n" +
+                        "    ORDER BY SUM(p.total_playtime) DESC\n" +
+                        "    LIMIT 1");
+                topGenre.setString(1, this.currentUser);
+                ResultSet res = topGenre.executeQuery();
+                res.next();
+                String genre = res.getString("genre_name");
+                PreparedStatement usersWithSameTopGenre = conn.prepareStatement("SELECT username\n" +
+                        "FROM (\n" +
+                        "    SELECT t.username, t.genre_name, t.playtime\n" +
+                        "    FROM (\n" +
+                        "      SELECT username, genre_name, SUM(total_playtime) as playtime\n" +
+                        "      FROM plays INNER JOIN has_genre hg on plays.vg_id = hg.vg_id\n" +
+                        "      GROUP BY genre_name, username\n" +
+                        "    ) t\n" +
+                        "    INNER JOIN (\n" +
+                        "      SELECT username, MAX(playtime) as max_playtime\n" +
+                        "      FROM (\n" +
+                        "        SELECT username, genre_name, SUM(total_playtime) as playtime\n" +
+                        "        FROM plays INNER JOIN has_genre hg on plays.vg_id = hg.vg_id\n" +
+                        "        GROUP BY genre_name, username\n" +
+                        "      ) x\n" +
+                        "      GROUP BY username\n" +
+                        "    ) y\n" +
+                        "    ON t.username = y.username AND t.playtime = y.max_playtime\n" +
+                        "    ORDER BY t.playtime DESC) as topGenres\n" +
+                        "WHERE genre_name = ?");
+                usersWithSameTopGenre.setString(1, genre);
+                ResultSet usersRes = usersWithSameTopGenre.executeQuery();
+                class playtimeObj implements Comparable<playtimeObj> {
+                    int playtime;
+                    String name;
+
+                    playtimeObj(int playtime, String name) {
+                        this.playtime = playtime;
+                        this.name = name;
+                    }
+
+                    @Override
+                    public boolean equals(Object o) {
+                        if (o instanceof playtimeObj) {
+                            playtimeObj op = (playtimeObj) o;
+                            return this.name.equals(op.name);
+                        }
+                        return false;
+                    }
+
+                    @Override
+                    public int hashCode() {
+                        return this.name.hashCode();
+                    }
+
+                    @Override
+                    public int compareTo(playtimeObj o) {
+                        if (this.playtime == o.playtime) {
+                            return o.name.compareTo(this.name);
+                        }
+                        return o.playtime - this.playtime;
+                    }
+                }
+                ArrayList<playtimeObj> topGamesInGenre = new ArrayList<>();
+                while (usersRes.next()) {
+                    String user = usersRes.getString("username");
+                    PreparedStatement usersTopGenreGame = conn.prepareStatement("SELECT p.username, vg.title, g.genre_name, SUM(p.total_playtime) AS playtime " +
+                            "FROM plays p natural join has_genre g natural join video_game vg " +
+                            "WHERE p.username = ? AND g.genre_name = ? " +
+                            "GROUP BY p.username, vg.title, g.genre_name " +
+                            "ORDER BY playtime " +
+                            "DESC LIMIT 1;");
+                    usersTopGenreGame.setString(1, user);
+                    usersTopGenreGame.setString(2, genre);
+                    ResultSet topGameRes = usersTopGenreGame.executeQuery();
+                    topGameRes.next();
+                    String vg_title = topGameRes.getString("title");
+                    int playtime = topGameRes.getInt("playtime");
+                    playtimeObj obj = new playtimeObj(playtime, vg_title);
+
+                    if (topGamesInGenre.contains(obj)) {
+                        for (playtimeObj p : topGamesInGenre) {
+                            if (p.equals(obj)) {
+                                p.playtime = p.playtime + obj.playtime;
+                                break;
+                            }
+                        }
+                    } else {
+                        topGamesInGenre.add(obj);
+                    }
+                    Collections.sort(topGamesInGenre);
+                }
+                System.out.println("Your most played genre is " + genre + ". Here are the most played games in that genre:");
+                int columnsNumber = 2;
+                int colWidth = 30; // this can be changed if we need to accommodate larger strings
+                int tableWidth = (columnsNumber * colWidth) + (columnsNumber + 1) + (2 * columnsNumber);
+                for (int i = 0; i < tableWidth; i++) { // print lines
+                    System.out.print("-");
+                }
+                System.out.println();
+                // print column names
+                System.out.printf("| %-" + colWidth + "s ", "Name");
+                System.out.printf("| %-" + colWidth + "s ", "Playtime");
+                System.out.println("|");
+                for (int i = 0; i < tableWidth; i++) { // print lines
+                    System.out.print("-");
+                }
+                System.out.println();
+                // print rows
+                for (int i = 0; i < 10; i++) {
+                    System.out.printf("| %-" + colWidth + "s ", topGamesInGenre.get(i).name);
+                    System.out.printf("| %-" + colWidth + "s ", topGamesInGenre.get(i).playtime);
+                    System.out.println("|");
+                }
+                for (int i = 0; i < tableWidth; i++) { // print lines
+                    System.out.print("-");
+                }
+                System.out.println();
+
+
+            } catch (SQLException e){
+                e.printStackTrace();
+            }
         }
 
     }

@@ -1187,7 +1187,60 @@ public class Application {
         if(recType.equals("history")){
             System.out.println("The top 10 recommended games based on games you like");
             try{
-                PreparedStatement st = conn.prepareStatement("");
+                PreparedStatement topGenre = conn.prepareStatement("SELECT g.genre_name\n" +
+                        "    FROM plays p\n" +
+                        "    JOIN has_genre g ON p.vg_id = g.vg_id\n" +
+                        "    WHERE p.username = ?\n" +
+                        "    GROUP BY g.genre_name\n" +
+                        "    ORDER BY SUM(p.total_playtime) DESC\n" +
+                        "    LIMIT 1");
+                topGenre.setString(1, this.currentUser);
+                ResultSet res = topGenre.executeQuery();
+                String genre = res.getString("genre_name");
+                PreparedStatement usersWithSameTopGenre = conn.prepareStatement("SELECT username\n" +
+                        "FROM (\n" +
+                        "    SELECT t.username, t.genre_name, t.playtime\n" +
+                        "    FROM (\n" +
+                        "      SELECT username, genre_name, SUM(total_playtime) as playtime\n" +
+                        "      FROM plays INNER JOIN has_genre hg on plays.vg_id = hg.vg_id\n" +
+                        "      GROUP BY genre_name, username\n" +
+                        "    ) t\n" +
+                        "    INNER JOIN (\n" +
+                        "      SELECT username, MAX(playtime) as max_playtime\n" +
+                        "      FROM (\n" +
+                        "        SELECT username, genre_name, SUM(total_playtime) as playtime\n" +
+                        "        FROM plays INNER JOIN has_genre hg on plays.vg_id = hg.vg_id\n" +
+                        "        GROUP BY genre_name, username\n" +
+                        "      ) x\n" +
+                        "      GROUP BY username\n" +
+                        "    ) y\n" +
+                        "    ON t.username = y.username AND t.playtime = y.max_playtime\n" +
+                        "    ORDER BY t.playtime DESC) as topGenres\n" +
+                        "WHERE genre_name = ?");
+                usersWithSameTopGenre.setString(1, genre);
+                ResultSet usersRes = usersWithSameTopGenre.executeQuery();
+                HashMap<String, Integer> topGamesInGenre = new HashMap<>();
+                while (usersRes.next()) {
+                    String user = usersRes.getString("username");
+                    PreparedStatement usersTopGenreGame = conn.prepareStatement("SELECT p.username, p.vg_id, g.genre_name, SUM(p.total_playtime) AS playtime\n" +
+                            "FROM plays p\n" +
+                            "JOIN has_genre g ON p.vg_id = g.vg_id\n" +
+                            "WHERE p.username = ? AND g.genre_name = ?\n" +
+                            "GROUP BY p.username, p.vg_id, g.genre_name\n" +
+                            "ORDER BY playtime DESC\n" +
+                            "LIMIT 1;");
+                    usersTopGenreGame.setString(1, user);
+                    usersTopGenreGame.setString(2, genre);
+                    ResultSet topGameRes = usersTopGenreGame.executeQuery();
+                    String vg_id = topGameRes.getString("vg_id");
+                    Integer playtime = Integer.parseInt(topGameRes.getString("playtime"));
+                    if (topGamesInGenre.containsKey(vg_id)) {
+                        Integer incrementedPlaytime = topGamesInGenre.get(vg_id) + playtime;
+                        topGamesInGenre.put(vg_id, incrementedPlaytime);
+                    } else {
+                        topGamesInGenre.put(vg_id, playtime);
+                    }
+                }
             } catch (SQLException e){
                 e.printStackTrace();
             }

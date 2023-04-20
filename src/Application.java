@@ -1296,7 +1296,7 @@ public class Application {
                 }
                 System.out.println();
                 // print rows
-                for (int i = 0; i < topGamesInGenre.size(); i++) {
+                for (int i = 0; i < 10; i++) {
                     System.out.printf("| %-" + colWidth + "s ", topGamesInGenre.get(i).name);
                     System.out.printf("| %-" + colWidth + "s ", topGamesInGenre.get(i).playtime);
                     System.out.println("|");
